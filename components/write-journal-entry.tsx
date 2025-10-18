@@ -1,11 +1,11 @@
-import ocrEvents from '@/utils/ocrEvents';
-import { useCameraPermissions } from 'expo-camera';
-import * as FileSystem from 'expo-file-system';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+// legacy FileSystem used for readAsStringAsync (local file URIs)
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useRouter } from 'expo-router';
 import { Camera as CameraIcon, Image as ImageIcon } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface WriteJournalEntryProps {
   onClose?: () => void;
@@ -17,27 +17,48 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
   const [content, setContent] = useState('');
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cameraVisible, setCameraVisible] = useState(false);
+  const cameraRef = React.useRef<any>(null);
+  const [capturedUri, setCapturedUri] = useState<string | null>(null);
+  const [processError, setProcessError] = useState<string | null>(null);
 
   // Replace this with your actual API Gateway / Lambda endpoint that runs Textract
-  const TEXTRACT_API_URL = 'https://REPLACE_WITH_YOUR_API_GATEWAY_URL/textract';
+  const TEXTRACT_API_URL = 'https://2sxyz7gmc1.execute-api.us-east-1.amazonaws.com/ocr/textract';
+
 
   async function uploadAndExtractText(uri: string) {
-    // Read file as base64
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+    // Use expo-image-manipulator to optionally resize/compress and return base64 for any URI.
+    // This avoids relying on FileSystem.readAsStringAsync and handles local file:// URIs.
+    const manipResult = await ImageManipulator.manipulateAsync(
+      uri,
+      // you can add resize operations here if you want to cap dimensions
+      [],
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+
+    const base64 = manipResult.base64 ?? '';
+    if (!base64) throw new Error('Failed to convert image to base64');
 
     // Send to your Textract-backed API
     const res = await fetch(TEXTRACT_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageBase64: base64 }),
+      body: base64,
     });
 
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(`Textract API error: ${res.status} ${text}`);
+      throw new Error(`Textract API error: ${res.status} ${text} (url: ${TEXTRACT_API_URL})`);
     }
 
-    const json = await res.json();
+    let json: any;
+    try {
+      json = await res.json();
+    } catch (e) {
+      // not JSON, surface raw text
+      const text = await res.text();
+      throw new Error(`Textract API returned non-JSON response: ${text} (url: ${TEXTRACT_API_URL})`);
+    }
     // Expecting the API to return something like: { text: 'extracted text...' }
     return json.text ?? json.extractedText ?? '';
   }
@@ -54,9 +75,9 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
 
     // Request permission if not granted
     if (!permission.granted) {
-  console.log('Requesting camera permission...');
-  const result = await requestPermission();
-  console.log(`Permission result: ${JSON.stringify(result)}`);
+      console.log('Requesting camera permission...');
+      const result = await requestPermission();
+      console.log(`Permission result: ${JSON.stringify(result)}`);
 
       if (!result.granted) {
         Alert.alert('Permission Required', 'Camera permission is required to use this feature.');
@@ -64,11 +85,62 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
       }
     }
 
-    // emit event for top-level camera handler to open the camera immediately
-    ocrEvents.emit('openCamera');
+    // open local camera modal inside this component
+    setProcessError(null);
+    setCapturedUri(null);
+    setCameraVisible(true);
   };
 
-  // camera capture is handled by top-level camera; WriteJournalEntry only emits openCamera
+  // Camera modal + processing logic
+  const processCaptured = async (uri: string) => {
+    setIsProcessing(true);
+    setProcessError(null);
+    try {
+      const extracted = await uploadAndExtractText(uri);
+      if (extracted) {
+        setContent(prevContent => {
+          const newText = extracted.trim();
+          return prevContent ? `${prevContent}\n\n${newText}` : newText;
+        });
+        Alert.alert('Success', 'Text extracted and added to your journal entry!');
+        setCapturedUri(null);
+        setCameraVisible(false);
+      } else {
+        setProcessError('No text extracted from image.');
+      }
+    } catch (err: any) {
+      console.error('Error processing captured image', err);
+      const message = err?.message ?? String(err);
+      // Provide friendlier guidance for common HTTP errors
+      if (message.includes('404')) {
+        Alert.alert('Server error', 'OCR endpoint not found (404). Please check the TEXTRACT_API_URL in components/write-journal-entry.tsx — ensure the full API Gateway URL, stage and resource path are correct.');
+      } else if (message.includes('401') || message.includes('403')) {
+        Alert.alert('Authentication error', 'The Textract endpoint rejected the request (401/403). Check API keys / auth headers.');
+      } else {
+        Alert.alert('OCR error', message);
+      }
+      setProcessError(message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const take = async () => {
+    if (!cameraRef.current) return;
+    try {
+      setIsProcessing(true);
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+      if (photo?.uri) {
+        setCapturedUri(photo.uri);
+        await processCaptured(photo.uri);
+      }
+    } catch (e) {
+      console.error(e);
+      setProcessError(String(e));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleOpenImagePicker = async () => {
     try {
@@ -127,14 +199,10 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
   };
 
   // Listen for OCR results emitted by the top-level camera
+  // (no external ocr events anymore)
   useEffect(() => {
-    const off = ocrEvents.on('ocrResult', (text: string) => {
-      if (text) {
-        setContent(prev => prev ? `${prev}\n\n${text}` : text);
-        Alert.alert('Success', 'Text extracted and added to your journal entry!');
-      }
-    });
-    return off;
+    // no-op
+    return () => {};
   }, []);
 
   return (
@@ -192,6 +260,58 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Camera Modal */}
+      <Modal visible={cameraVisible} animationType="slide" presentationStyle="overFullScreen" transparent statusBarTranslucent>
+        <View style={styles.cameraModalWrapper}>
+          {capturedUri ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <Image source={{ uri: capturedUri! }} style={{ width: '100%', height: '100%', resizeMode: 'contain' }} />
+              {processError ? (
+                <View style={{ position: 'absolute', top: 80, left: 20, right: 20, alignItems: 'center' }}>
+                  <Text style={{ color: '#fff', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.6)', padding: 8, borderRadius: 8 }}>{processError}</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : (
+            <CameraView ref={cameraRef} style={styles.camera} facing="back" />
+          )}
+
+          <View style={styles.cameraControls}>
+            <TouchableOpacity style={styles.closeButton} onPress={() => { setCameraVisible(false); setCapturedUri(null); setProcessError(null); }}>
+              <Text style={{ color: '#fff' }}>Close</Text>
+            </TouchableOpacity>
+
+            <View style={styles.captureButtonContainer}>
+              {capturedUri ? (
+                isProcessing ? (
+                  <ActivityIndicator size="large" color="#fff" />
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity onPress={() => { setCapturedUri(null); setProcessError(null); }} style={{ paddingVertical: 12, paddingHorizontal: 18, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.12)' }}>
+                      <Text style={{ color: '#fff' }}>Retake</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => capturedUri && processCaptured(capturedUri)} style={{ paddingVertical: 12, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#fff' }}>
+                      <Text style={{ color: '#000' }}>Try Again</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => { setCapturedUri(null); setProcessError(null); setCameraVisible(false); }} style={{ paddingVertical: 12, paddingHorizontal: 18, borderRadius: 8, backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}>
+                      <Text style={{ color: '#fff' }}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                )
+              ) : (
+                isProcessing ? (
+                  <ActivityIndicator size="large" color="#fff" />
+                ) : (
+                  <TouchableOpacity onPress={take} style={styles.captureButton}>
+                    <View style={styles.captureButtonInner} />
+                  </TouchableOpacity>
+                )
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
