@@ -1,5 +1,4 @@
 import FloatingActionMenu from '@/components/floating-action-menu';
-import WriteJournalEntry from '@/components/write-journal-entry';
 import { useRouter } from 'expo-router';
 import { BookOpen, Clock, Plus } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
@@ -28,7 +27,6 @@ const generateDates = (startDate: Date, count: number, startIndex: number = 0) =
 
 export default function JournalPage() {
   const router = useRouter();
-  const [isModalVisible, setIsModalVisible] = useState(false);
   const [dates, setDates] = useState(generateDates(new Date(2024, 9, 15), 20));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -127,7 +125,7 @@ export default function JournalPage() {
           <Text style={styles.journalTitle}>Journal</Text>
           <TouchableOpacity 
             style={styles.addButton}
-            onPress={() => setIsModalVisible(true)}
+            onPress={() => router.push('/write-journal' as any)}
           >
             <Plus color="#fff" size={18} />
           </TouchableOpacity>
@@ -214,10 +212,7 @@ export default function JournalPage() {
         <View style={{ height: 80 }} />
       </ScrollView>
       
-      <WriteJournalEntry 
-        visible={isModalVisible}
-        onClose={() => setIsModalVisible(false)}
-      />
+      {/* Journal editor moved to a dedicated page at /write-journal */}
       <FloatingActionMenu />
     </SafeAreaView>
   );

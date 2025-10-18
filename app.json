@@ -11,7 +11,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.ICKE",
-      "deploymentTarget": "15.5"
+      "deploymentTarget": "15.5",
+      "infoPlist": {
+        "NSCameraUsageDescription": "We need access to your camera to let you take a photo for OCR"
+      }
     },
     "android": {
       "adaptiveIcon": {

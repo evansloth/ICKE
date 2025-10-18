@@ -1,25 +1,51 @@
-import MlkitOcr, { MlkitOcrResult } from '@react-native-ml-kit/text-recognition';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Camera, Image as ImageIcon, X } from 'lucide-react-native';
-import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import ocrEvents from '@/utils/ocrEvents';
+import { useCameraPermissions } from 'expo-camera';
+import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import { Camera as CameraIcon, Image as ImageIcon } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface WriteJournalEntryProps {
-  visible: boolean;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
-export default function WriteJournalEntry({ visible, onClose }: WriteJournalEntryProps) {
+export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
+  const router = useRouter();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [cameraVisible, setCameraVisible] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
-  const cameraRef = useRef<CameraView>(null);
+
+  // Replace this with your actual API Gateway / Lambda endpoint that runs Textract
+  const TEXTRACT_API_URL = 'https://REPLACE_WITH_YOUR_API_GATEWAY_URL/textract';
+
+  async function uploadAndExtractText(uri: string) {
+    // Read file as base64
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+
+    // Send to your Textract-backed API
+    const res = await fetch(TEXTRACT_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64 }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Textract API error: ${res.status} ${text}`);
+    }
+
+    const json = await res.json();
+    // Expecting the API to return something like: { text: 'extracted text...' }
+    return json.text ?? json.extractedText ?? '';
+  }
 
   const handleOpenCamera = async () => {
-    console.log('Camera button clicked, permission:', permission);
-    
+    console.log('Camera button clicked');
+    console.log(`permission: ${JSON.stringify(permission)}`);
+
     // If permission is still loading, wait a moment
     if (!permission) {
       Alert.alert('Please wait', 'Camera is initializing...');
@@ -28,157 +54,145 @@ export default function WriteJournalEntry({ visible, onClose }: WriteJournalEntr
 
     // Request permission if not granted
     if (!permission.granted) {
-      console.log('Requesting camera permission...');
-      const result = await requestPermission();
-      console.log('Permission result:', result);
-      
+  console.log('Requesting camera permission...');
+  const result = await requestPermission();
+  console.log(`Permission result: ${JSON.stringify(result)}`);
+
       if (!result.granted) {
         Alert.alert('Permission Required', 'Camera permission is required to use this feature.');
         return;
       }
     }
 
-    console.log('Opening camera...');
-    setCameraVisible(true);
+    // emit event for top-level camera handler to open the camera immediately
+    ocrEvents.emit('openCamera');
   };
 
-  const handleTakePicture = async () => {
-    if (!cameraRef.current) {
-      return;
-    }
+  // camera capture is handled by top-level camera; WriteJournalEntry only emits openCamera
 
+  const handleOpenImagePicker = async () => {
     try {
       setIsProcessing(true);
-      const photo = await cameraRef.current.takePictureAsync({
+
+      // Check/request media library permission
+      const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      let finalStatus = status;
+
+      if (finalStatus !== 'granted') {
+        const request = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        finalStatus = request.status;
+      }
+
+      if (finalStatus !== 'granted') {
+        Alert.alert('Permission Required', 'Media library permission is required to select a photo.');
+        return;
+      }
+
+      // Open image library
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8,
+        allowsEditing: false,
       });
 
-      if (photo?.uri) {
-        // Perform OCR on the captured image
-        const result: MlkitOcrResult = await MlkitOcr.detectFromUri(photo.uri);
-        
-        if (result && result.text) {
-          // Append the extracted text to the existing content
+      if (result.canceled) return;
+
+      const uri = result.assets && result.assets[0]?.uri ? result.assets[0].uri : undefined;
+      if (!uri) {
+        Alert.alert('Error', 'Could not get the selected image.');
+        return;
+      }
+
+      try {
+        const extracted = await uploadAndExtractText(uri);
+        if (extracted) {
           setContent(prevContent => {
-            const newText = result.text.trim();
+            const newText = extracted.trim();
             return prevContent ? `${prevContent}\n\n${newText}` : newText;
           });
-          setCameraVisible(false);
           Alert.alert('Success', 'Text extracted and added to your journal entry!');
         } else {
-          Alert.alert('No Text Found', 'Could not detect any text in the image.');
+          Alert.alert('No Text Found', 'Could not detect any text in the selected image.');
         }
+      } catch (err) {
+        console.error('Error calling Textract API:', err);
+        Alert.alert('Error', 'Failed to extract text from the selected image. Please try again.');
       }
     } catch (error) {
-      console.error('Error taking picture or performing OCR:', error);
-      Alert.alert('Error', 'Failed to extract text from the image. Please try again.');
+      console.error('Error selecting image or performing OCR:', error);
+      Alert.alert('Error', 'Failed to extract text from the selected image. Please try again.');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  return (
-    <>
-      <Modal
-        animationType="slide"
-        presentationStyle="pageSheet"
-        visible={visible}
-        onRequestClose={onClose}
-      >
-        <SafeAreaView style={styles.container}>
-          <StatusBar barStyle="dark-content" />
-          <View style={styles.handleContainer}>
-            <View style={styles.handle} />
-          </View>
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-            <View style={styles.header}>
-              <View style={styles.dateContainer}>
-                <Text style={styles.dayNumber}>17</Text>
-                <Text style={styles.dayName}>Friday</Text>
-                <Text style={styles.mood}>🙂</Text>
-              </View>
-              <TouchableOpacity style={styles.doneButton} onPress={onClose}>
-                <Text style={styles.doneText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.journalContainer}>
-              <TextInput
-                style={styles.titleInput}
-                placeholder="Title"
-                placeholderTextColor="#d7d7d7"
-                value={title}
-                onChangeText={setTitle}
-              />
-              
-              <View style={styles.divider} />
-              
-              <TextInput
-                style={styles.contentInput}
-                placeholder="Start writing...."
-                placeholderTextColor="#d7d7d7"
-                multiline
-                textAlignVertical="top"
-                value={content}
-                onChangeText={setContent}
-              />
-            </View>
-            
-            <View style={styles.actionButtonsContainer}>
-              <TouchableOpacity 
-                style={styles.actionButton} 
-                onPress={handleOpenCamera}
-                activeOpacity={0.7}
-              >
-                <Camera stroke="white" width={18} height={18} />
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={[styles.actionButton, styles.actionButtonTop]}>
-                <ImageIcon stroke="white" width={18} height={18} />
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+  // Listen for OCR results emitted by the top-level camera
+  useEffect(() => {
+    const off = ocrEvents.on('ocrResult', (text: string) => {
+      if (text) {
+        setContent(prev => prev ? `${prev}\n\n${text}` : text);
+        Alert.alert('Success', 'Text extracted and added to your journal entry!');
+      }
+    });
+    return off;
+  }, []);
 
-      {/* Camera Modal - Rendered separately to avoid nesting issues */}
-      <Modal
-        visible={cameraVisible}
-        animationType="slide"
-        presentationStyle="overFullScreen"
-        transparent={false}
-        onRequestClose={() => setCameraVisible(false)}
-      >
-        <View style={styles.cameraContainer}>
-          <CameraView
-            ref={cameraRef}
-            style={styles.camera}
-            facing="back"
-          />
-          <View style={styles.cameraControls}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setCameraVisible(false)}
-            >
-              <X stroke="white" width={24} height={24} />
-            </TouchableOpacity>
-            
-            <View style={styles.captureButtonContainer}>
-              {isProcessing ? (
-                <ActivityIndicator size="large" color="#fff" />
-              ) : (
-                <TouchableOpacity
-                  style={styles.captureButton}
-                  onPress={handleTakePicture}
-                >
-                  <View style={styles.captureButtonInner} />
-                </TouchableOpacity>
-              )}
-            </View>
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={styles.dateContainer}>
+            <Text style={styles.dayNumber}>17</Text>
+            <Text style={styles.dayName}>Friday</Text>
+            <Text style={styles.mood}>🙂</Text>
           </View>
         </View>
-      </Modal>
-    </>
+        
+        <View style={styles.journalContainer}>
+          <TextInput
+            style={styles.titleInput}
+            placeholder="Title"
+            placeholderTextColor="#d7d7d7"
+            value={title}
+            onChangeText={setTitle}
+          />
+          
+          <View style={styles.divider} />
+          
+          <TextInput
+            style={styles.contentInput}
+            placeholder="Start writing...."
+            placeholderTextColor="#d7d7d7"
+            multiline
+            textAlignVertical="top"
+            value={content}
+            onChangeText={setContent}
+          />
+        </View>
+        
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={handleOpenCamera}
+            activeOpacity={0.7}
+          >
+            <CameraIcon stroke="white" width={18} height={18} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.actionButton, styles.actionButtonTop]}
+            onPress={handleOpenImagePicker}
+            activeOpacity={0.7}
+          >
+            {isProcessing ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <ImageIcon stroke="white" width={18} height={18} />
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -283,6 +297,33 @@ const styles = StyleSheet.create({
   cameraContainer: {
     flex: 1,
     backgroundColor: '#000',
+  },
+  cameraModalWrapper: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+  },
+  cameraDebugBox: {
+    position: 'absolute',
+    top: 60,
+    left: 12,
+    right: 12,
+    maxHeight: 180,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    padding: 10,
+  },
+  cameraDebugTitle: {
+    color: '#fff',
+    fontSize: 12,
+    marginBottom: 6,
+  },
+  cameraDebugScroll: {
+    maxHeight: 140,
+  },
+  cameraDebugText: {
+    color: '#ddd',
+    fontSize: 11,
+    marginBottom: 4,
   },
   camera: {
     flex: 1,
