@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { Camera as CameraIcon, Image as ImageIcon } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import '/.env';
+// import '/.env';
 
 interface WriteJournalEntryProps {
   onClose?: () => void;
@@ -16,6 +16,7 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [moodEmoji, setMoodEmoji] = useState('🙂');
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
   const [cameraVisible, setCameraVisible] = useState(false);
@@ -61,12 +62,19 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
       throw new Error(`Textract API returned non-JSON response: ${text} (url: ${TEXTRACT_API_URL})`);
     }
     // Expecting the API to return something like: { text: 'extracted text...' }
-    const ocrText = json.text ?? json.extractedText ?? '';
+    let ocrText = json.text ?? json.cleanedText ?? '';
+
+    // Some handlers may prefix the string; keep original if split fails
+    if (ocrText.includes(':')) {
+      const parts = ocrText.split(':');
+      if (parts.length > 1) ocrText = parts.slice(1).join(':').trim();
+    }
 
     // Optional post-processing: send extracted text to an NLP/AI service to clean it up
     // and double-check for readability/formatting. If `NLP_API_URL` is set, we'll POST
-    // the OCR result and expect a JSON response with a cleaned text field.
-    if (ocrText && typeof NLP_API_URL === 'string' && NLP_API_URL.length > 0) {
+    // the OCR result and expect a JSON response with a cleaned text field and optionally an emoji.
+    let returnedEmoji: string | undefined = undefined;
+    if (ocrText) {
       try {
         const procRes = await fetch(NLP_API_URL, {
           method: 'POST',
@@ -78,9 +86,13 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
           const procJson = await procRes.json();
           // Accept several possible field names from the NLP service
           const cleaned = procJson.text ?? procJson.cleanedText ?? procJson.processedText ?? '';
-          if (cleaned) return cleaned;
-          // If NLP returned nothing useful, fall back to OCR
-          console.warn('NLP service returned empty cleaned text, falling back to OCR text');
+          const emoji = procJson.emoji ?? procJson.sentimentEmoji ?? procJson.emojiChar ?? '';
+          if (emoji) {
+            returnedEmoji = emoji.split("→")[1].trim();
+            console.log(`NLP returned emoji: ${returnedEmoji}`);
+          }
+          if (cleaned) ocrText = cleaned;
+          else console.warn('NLP service returned no cleaned text; falling back to OCR text');
         } else {
           const body = await procRes.text();
           console.warn(`NLP service returned ${procRes.status}: ${body}`);
@@ -90,7 +102,7 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
       }
     }
 
-    return ocrText;
+    return { text: ocrText, emoji: returnedEmoji } as { text: string; emoji?: string };
   }
 
   const handleOpenCamera = async () => {
@@ -127,11 +139,11 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
     setProcessError(null);
     try {
       const extracted = await uploadAndExtractText(uri);
-      if (extracted) {
-        setContent(prevContent => {
-          const newText = extracted.trim();
-          return prevContent ? `${prevContent}\n\n${newText}` : newText;
-        });
+      if (extracted && extracted.text) {
+        const textToInsert = extracted.text.trim();
+        setContent(prevContent => (prevContent ? `${prevContent}\n\n${textToInsert}` : textToInsert));
+        // Update mood emoji if NLP returned one
+        if (extracted.emoji) setMoodEmoji(extracted.emoji);
         Alert.alert('Success', 'Text extracted and added to your journal entry!');
         setCapturedUri(null);
         setCameraVisible(false);
@@ -207,11 +219,10 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
 
       try {
         const extracted = await uploadAndExtractText(uri);
-        if (extracted) {
-          setContent(prevContent => {
-            const newText = extracted.trim();
-            return prevContent ? `${prevContent}\n\n${newText}` : newText;
-          });
+        if (extracted && extracted.text) {
+          const textToInsert = extracted.text.trim();
+          setContent(prevContent => (prevContent ? `${prevContent}\n\n${textToInsert}` : textToInsert));
+          if (extracted.emoji) setMoodEmoji(extracted.emoji);
           Alert.alert('Success', 'Text extracted and added to your journal entry!');
         } else {
           Alert.alert('No Text Found', 'Could not detect any text in the selected image.');
@@ -242,7 +253,7 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
           <View style={styles.dateContainer}>
             <Text style={styles.dayNumber}>17</Text>
             <Text style={styles.dayName}>Friday</Text>
-            <Text style={styles.mood}>🙂</Text>
+            <Text style={styles.mood}>{moodEmoji}</Text>
           </View>
         </View>
         
