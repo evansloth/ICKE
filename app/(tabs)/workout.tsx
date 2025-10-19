@@ -85,7 +85,9 @@ export default function WorkoutPage() {
         accuracy: newResult.accuracy || 0,
         exerciseType: 'Form Analysis',
         totalFrames: newResult.total_frames,
-        goodFrames: newResult.good_frames
+        goodFrames: newResult.good_frames,
+        summary: newResult.summary,
+        detailedReport: newResult.detailed_report
       };
 
       // Save session to AsyncStorage
@@ -107,6 +109,19 @@ export default function WorkoutPage() {
     }
 
     setLastAnalysisResult(newResult);
+  };
+
+  const handleViewWorkoutDetails = (session: WorkoutSession) => {
+    router.push({
+      pathname: '/analysis',
+      params: {
+        accuracy: session.accuracy,
+        summary: session.summary || 'No summary available',
+        totalFrames: session.totalFrames || 0,
+        goodFrames: session.goodFrames || 0,
+        detailedReport: JSON.stringify(session.detailedReport || [])
+      }
+    });
   };
 
   const startLoadingAnimation = () => {
@@ -347,27 +362,6 @@ export default function WorkoutPage() {
             </View>
           </TouchableOpacity>
 
-          {/* Add Exercise Card */}
-          <View style={styles.addExerciseContainer}>
-            <View style={[styles.workoutProgramCard, { backgroundColor: '#A8B5A8' }]}>
-              <Text style={styles.workoutProgramTitle}>Add Exercise</Text>
-              <Text style={styles.workoutProgramDescription}>Create your own custom workout routine</Text>
-              <View style={styles.workoutProgramTags}>
-                <View style={styles.workoutTag}>
-                  <Text style={styles.workoutTagText}>Custom</Text>
-                </View>
-                <View style={styles.workoutTag}>
-                  <Text style={styles.workoutTagText}>Your Pace</Text>
-                </View>
-              </View>
-              <TouchableOpacity style={styles.startWorkoutButton}>
-                <Text style={styles.startWorkoutText}>Create workout</Text>
-                <View style={styles.startWorkoutIcon}>
-                  <Play size={16} color="#4A4A4A" />
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
 
           <Text style={styles.sectionTitle}>Recent Workouts</Text>
 
@@ -389,7 +383,10 @@ export default function WorkoutPage() {
                         <Text style={styles.workoutTagText}>{session.accuracy}% accuracy</Text>
                       </View>
                     </View>
-                    <TouchableOpacity style={styles.viewWorkoutButton}>
+                    <TouchableOpacity
+                      style={styles.viewWorkoutButton}
+                      onPress={() => handleViewWorkoutDetails(session)}
+                    >
                       <Text style={styles.viewWorkoutText}>View details</Text>
                       <View style={styles.viewWorkoutIcon}>
                         <TrendingUp size={16} color="#4A4A4A" />

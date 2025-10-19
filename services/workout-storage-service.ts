@@ -9,6 +9,8 @@ export interface WorkoutSession {
   exerciseType: string;
   totalFrames?: number;
   goodFrames?: number;
+  summary?: string;
+  detailedReport?: any[];
 }
 
 export interface WorkoutStats {
