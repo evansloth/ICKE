@@ -1,6 +1,5 @@
 import FloatingActionMenu from '@/components/floating-action-menu';
 import { Bell, Calendar, Clock, Music, Smile, Star, Trophy } from 'lucide-react-native';
-import React from 'react';
 import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeInDown,
