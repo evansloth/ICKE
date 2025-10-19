@@ -1,11 +1,16 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { ArrowLeft, Send } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface ConversationResponse {
   feedback: string;
   suggestions: string[];
+}
+
+interface ChatResponse {
+  response: string;
 }
 
 interface ChatMessage {
@@ -15,52 +20,13 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-
-
 export default function ViewJournal() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  
-  // Parameter validation and fallback logic
-  const validateAndGetParams = () => {
-    const fallbackText = "Today felt different somehow. The coffee tasted better, the sun seemed warmer. I called Mom after weeks of meaning to. Her laugh reminded me why small gestures matter most. Tomorrow, I'll do better.";
-    const fallbackTitle = "Untitled Entry";
-    const fallbackDate = new Date().toISOString();
-    const fallbackBackgroundColor = '#E8F5E8';
-
-    const text = params.text as string;
-    const title = params.title as string;
-    const date = params.date as string;
-    const backgroundColor = params.backgroundColor as string;
-
-    return {
-      text: text && text.trim() ? text : fallbackText,
-      title: title && title.trim() ? title : fallbackTitle,
-      date: date && date.trim() ? date : fallbackDate,
-      backgroundColor: backgroundColor || fallbackBackgroundColor
-    };
-  };
-
-  const journalData = validateAndGetParams();
-  const [journalText, setJournalText] = useState(journalData.text);
-  const [journalTitle, setJournalTitle] = useState(journalData.title);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedTitle, setEditedTitle] = useState(journalData.title);
-  const [editedText, setEditedText] = useState(journalData.text);
-  
-  // ScrollView ref for auto-scrolling
-  const scrollViewRef = useRef<ScrollView>(null);
-
-  // Log the received parameters for debugging
-  console.log('ViewJournal received params:', {
-    title: journalData.title,
-    date: journalData.date,
-    backgroundColor: journalData.backgroundColor,
-    textLength: journalData.text.length
-  });
+  const [journalText] = useState(
+    "Today felt different somehow. The coffee tasted better, the sun seemed warmer. I called Mom after weeks of meaning to. Her laugh reminded me why small gestures matter most. Tomorrow, I'll do better."
+  );
   const [analysisResult, setAnalysisResult] = useState<ConversationResponse | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [lastAnalyzed, setLastAnalyzed] = useState<Date | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatting, setIsChatting] = useState(false);
@@ -76,11 +42,7 @@ export default function ViewJournal() {
   const analyzeJournal = async (text: string) => {
     setIsAnalyzing(true);
     try {
-      const requestBody = { 
-        journal: text,
-        requestSuggestions: true,
-        analysisType: 'mood_and_suggestions'
-      };
+      const requestBody = { journal: text };
       const response = await fetch(CONVERSATION_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -92,49 +54,9 @@ export default function ViewJournal() {
         throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
 
-      const result = await response.json();
+      const result: ConversationResponse = await response.json();
       console.log('Analysis API Response:', result);
-      console.log('Raw result type:', typeof result);
-      console.log('Result keys:', Object.keys(result));
-      
-      // Handle different possible response formats
-      let suggestions = result.suggestions || result.recommendations || result.tips || [];
-      
-      // Ensure suggestions is an array
-      if (!Array.isArray(suggestions)) {
-        if (typeof suggestions === 'string') {
-          // If it's a string, try to split it or wrap it in an array
-          suggestions = suggestions.includes('\n') ? suggestions.split('\n').filter(s => s.trim()) : [suggestions];
-        } else {
-          suggestions = [];
-        }
-      }
-      
-      // Clean up suggestions (remove empty strings, trim whitespace)
-      suggestions = suggestions
-        .map((s: any) => typeof s === 'string' ? s.trim() : String(s).trim())
-        .filter((s: string) => s.length > 0);
-      
-      const processedResult: ConversationResponse = {
-        feedback: result.feedback || result.analysis || result.message || 'Analysis completed',
-        suggestions: suggestions
-      };
-      
-      // If no suggestions were provided, generate some generic ones based on common themes
-      if (processedResult.suggestions.length === 0) {
-        const genericSuggestions = [
-          "Take a few deep breaths and reflect on this moment",
-          "Consider journaling about this experience again tomorrow",
-          "Share your thoughts with someone you trust",
-          "Practice gratitude for the insights you've gained"
-        ];
-        processedResult.suggestions = genericSuggestions.slice(0, 2); // Show 2 generic suggestions
-      }
-      
-      console.log('Final processed suggestions:', processedResult.suggestions);
-      console.log('Final processed feedback:', processedResult.feedback);
-      setAnalysisResult(processedResult);
-      setLastAnalyzed(new Date());
+      setAnalysisResult(result);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       Alert.alert('Error', `Failed to analyze journal: ${errorMessage}`);
@@ -213,117 +135,27 @@ export default function ViewJournal() {
     setChatMessages([]);
   };
 
-  // Function to scroll to bottom when chat input is focused
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  };
-
-  // ------------------------------
-  // Journal editing functionality
-  // ------------------------------
-  const handleEdit = () => {
-    setIsEditing(true);
-    setEditedTitle(journalTitle);
-    setEditedText(journalText);
-  };
-
-  const handleSave = () => {
-    // Update title if it has content, otherwise keep original
-    if (editedTitle.trim()) {
-      setJournalTitle(editedTitle.trim());
-    } else {
-      setEditedTitle(journalTitle);
-    }
-    
-    // Update text if it has content, otherwise keep original
-    if (editedText.trim()) {
-      setJournalText(editedText.trim());
-    } else {
-      setEditedText(journalText);
-    }
-    
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setEditedTitle(journalTitle);
-    setEditedText(journalText);
-    setIsEditing(false);
-  };
-
-  // Parse date for display with robust handling of different formats
-  const parseDate = (dateString: string) => {
-    try {
-      let date: Date;
-      
-      // Try parsing as ISO string first
-      date = new Date(dateString);
-      
-      // If that fails, try parsing common formats
-      if (isNaN(date.getTime())) {
-        // Try parsing formatted date strings like "December 19, 2024 at 2:30 PM"
-        const dateMatch = dateString.match(/(\w+)\s+(\d+),\s+(\d+)/);
-        if (dateMatch) {
-          date = new Date(`${dateMatch[1]} ${dateMatch[2]}, ${dateMatch[3]}`);
-        }
-      }
-      
-      // If still invalid, use current date as fallback
-      if (isNaN(date.getTime())) {
-        console.warn('Invalid date format received:', dateString);
-        date = new Date();
-      }
-      
-      return {
-        day: date.getDate().toString(),
-        month: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase(),
-        time: date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-      };
-    } catch (error) {
-      console.error('Error parsing date:', error);
-      // Fallback to current date
-      const today = new Date();
-      return {
-        day: today.getDate().toString(),
-        month: today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase(),
-        time: today.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-      };
-    }
-  };
-
-  const dateInfo = parseDate(journalData.date);
-
   useEffect(() => {
     analyzeJournal(journalText);
-  }, [journalText]);
+  }, []);
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
-      <ScrollView 
-        ref={scrollViewRef}
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-      >
+    <LinearGradient colors={['#ebead6', '#f9eee9']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.push('/journal')}>
             <ArrowLeft size={24} color="#000" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Journal</Text>
         </View>
 
-        <View style={[styles.journalCard, { backgroundColor: journalData.backgroundColor }]}>
+        <View style={styles.journalCard}>
           <View style={styles.journalHeader}>
             <View style={styles.dateContainer}>
-              <Text style={styles.dateNumber}>{dateInfo.day}</Text>
+              <Text style={styles.dateNumber}>17</Text>
               <View style={styles.dateDetails}>
-                <Text style={styles.month}>{dateInfo.month}</Text>
-                <Text style={styles.time}>{dateInfo.time}</Text>
+                <Text style={styles.month}>OCTOBER 2025</Text>
+                <Text style={styles.time}>2:08 AM</Text>
               </View>
             </View>
             <Text style={styles.emoji}>🙂</Text>
@@ -333,71 +165,19 @@ export default function ViewJournal() {
 
           <View style={styles.journalContent}>
             <View style={styles.journalTitleRow}>
-              {isEditing ? (
-                <TextInput
-                  style={styles.titleEditInput}
-                  value={editedTitle}
-                  onChangeText={setEditedTitle}
-                  placeholder="Enter title..."
-                  placeholderTextColor="#B9B9B9"
-                  maxLength={100}
-                  multiline={false}
-                />
-              ) : (
-                <>
-                  <TouchableOpacity style={styles.titleContainer} onPress={handleEdit}>
-                    <Text style={[styles.journalTitleText, styles.editableTitle]}>{journalTitle}</Text>
-                    <View style={styles.editIndicator} />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={handleEdit}>
-                    <Text style={styles.editButton}>Edit</Text>
-                  </TouchableOpacity>
-                </>
-              )}
+              <Text style={styles.sectionTitle}>Journal</Text>
+              <Text style={styles.editButton}>Edit</Text>
             </View>
-            
-            {isEditing ? (
-              <TextInput
-                style={styles.textEditInput}
-                value={editedText}
-                onChangeText={setEditedText}
-                placeholder="Write your journal entry..."
-                placeholderTextColor="#B9B9B9"
-                multiline={true}
-                textAlignVertical="top"
-                maxLength={2000}
-              />
-            ) : (
-              <TouchableOpacity onPress={handleEdit}>
-                <Text style={[styles.journalText, styles.editableText]}>{journalText}</Text>
-              </TouchableOpacity>
-            )}
-            
-            {isEditing && (
-              <View style={styles.editButtonsContainer}>
-                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                  <Text style={styles.saveButtonText}>Save Changes</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            <Text style={styles.journalText}>{journalText}</Text>
           </View>
 
           <View style={styles.divider} />
 
-          <View style={[styles.analysisSection, { backgroundColor: journalData.backgroundColor, borderRadius: 16, marginHorizontal: 16, paddingHorizontal: 24, paddingVertical: 20 }]}>
+          <View style={styles.analysisSection}>
             <View style={styles.analysisTitleRow}>
               <Text style={styles.sectionTitle}>Mood Booster:</Text>
-              <TouchableOpacity 
-                style={[styles.refreshButton, isAnalyzing && styles.refreshButtonDisabled]} 
-                onPress={() => analyzeJournal(journalText)} 
-                disabled={isAnalyzing}
-              >
-                <Text style={styles.refreshButtonText}>
-                  {isAnalyzing ? '🔄 Analyzing...' : '🔄 Refresh'}
-                </Text>
+              <TouchableOpacity style={styles.refreshButton} onPress={() => analyzeJournal(journalText)} disabled={isAnalyzing}>
+                <Text style={styles.refreshButtonText}>{isAnalyzing ? 'Analyzing...' : 'Refresh'}</Text>
               </TouchableOpacity>
             </View>
 
@@ -407,21 +187,11 @@ export default function ViewJournal() {
               <View style={styles.analysisContent}>
                 <Text style={styles.analysisText}>{analysisResult.feedback}</Text>
 
-                {analysisResult.suggestions && analysisResult.suggestions.length > 0 && (
+                {analysisResult.suggestions.length > 0 && (
                   <View style={styles.suggestionsContainer}>
-                    <View style={styles.suggestionsTitleRow}>
-                      <Text style={styles.suggestionsTitle}>Personalized Suggestions:</Text>
-                      {lastAnalyzed && (
-                        <Text style={styles.lastUpdatedText}>
-                          Updated {lastAnalyzed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                      )}
-                    </View>
+                    <Text style={styles.suggestionsTitle}>Suggestions:</Text>
                     {analysisResult.suggestions.map((suggestion: string, i: number) => (
-                      <View key={i} style={styles.suggestionItem}>
-                        <Text style={styles.suggestionBullet}>💡</Text>
-                        <Text style={styles.suggestionText}>{suggestion}</Text>
-                      </View>
+                      <Text key={i} style={styles.suggestionText}>• {suggestion}</Text>
                     ))}
                   </View>
                 )}
@@ -433,7 +203,7 @@ export default function ViewJournal() {
         </View>
 
         {/* Chat Section */}
-        <View style={[styles.chatSection, { backgroundColor: '#E8F0F5', borderRadius: 24, padding: 24, marginHorizontal: 24 }]}>
+        <View style={styles.chatSection}>
           <View style={styles.chatHeader}>
             <Text style={styles.chatPrompt}>Need a chat?</Text>
             {chatMessages.length > 0 && (
@@ -474,7 +244,6 @@ export default function ViewJournal() {
                 placeholderTextColor="#B9B9B9"
                 value={chatInput}
                 onChangeText={setChatInput}
-                onFocus={scrollToBottom}
                 multiline
                 maxLength={500}
               />
@@ -489,9 +258,12 @@ export default function ViewJournal() {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
+
+// ... keep all your previous StyleSheet definitions here
+
 
 const styles = StyleSheet.create({
   container: {
@@ -587,95 +359,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Bold',
     color: '#A7A7A7',
   },
-  journalTitleText: {
-    fontSize: 16,
-    fontFamily: 'Poppins-Bold',
-    color: '#333',
-    flex: 1,
-  },
-  editableTitle: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'transparent',
-  },
-  titleContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  editIndicator: {
-    position: 'absolute',
-    bottom: -2,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    opacity: 0.5,
-  },
-  titleEditContainer: {
-    flex: 1,
-  },
-  titleEditInput: {
-    fontSize: 16,
-    fontFamily: 'Poppins-Bold',
-    color: '#333',
-    borderBottomWidth: 2,
-    borderBottomColor: '#6725C9',
-    paddingVertical: 4,
-    marginBottom: 12,
-    flex: 1,
-  },
-  textEditInput: {
-    fontSize: 16,
-    fontFamily: 'Poppins-Medium',
-    color: '#000',
-    lineHeight: 24,
-    borderWidth: 2,
-    borderColor: '#6725C9',
-    borderRadius: 8,
-    padding: 12,
-    minHeight: 120,
-    marginBottom: 16,
-  },
-  editableText: {
-    borderWidth: 1,
-    borderColor: 'transparent',
-    borderRadius: 4,
-    padding: 4,
-    marginLeft: -4,
-  },
-  editButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    marginTop: 8,
-  },
-  saveButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#6725C9',
-    borderRadius: 12,
-    flex: 1,
-    maxWidth: 120,
-  },
-  saveButtonText: {
-    fontSize: 14,
-    fontFamily: 'Poppins-SemiBold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  cancelButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 12,
-    flex: 1,
-    maxWidth: 120,
-  },
-  cancelButtonText: {
-    fontSize: 14,
-    fontFamily: 'Poppins-SemiBold',
-    color: '#666',
-    textAlign: 'center',
-  },
   editButton: {
     fontSize: 16,
     fontFamily: 'Poppins-Regular',
@@ -702,9 +385,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     backgroundColor: '#6725C9',
     borderRadius: 12,
-  },
-  refreshButtonDisabled: {
-    backgroundColor: '#B8B8B8',
   },
   refreshButtonText: {
     fontSize: 12,
@@ -845,39 +525,18 @@ const styles = StyleSheet.create({
   suggestionsContainer: {
     marginTop: 12,
   },
-  suggestionsTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
   suggestionsTitle: {
     fontSize: 13,
     fontFamily: 'Poppins-SemiBold',
     color: '#333',
-  },
-  lastUpdatedText: {
-    fontSize: 10,
-    fontFamily: 'Poppins-Regular',
-    color: '#999',
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     marginBottom: 6,
-    paddingHorizontal: 4,
-  },
-  suggestionBullet: {
-    fontSize: 12,
-    marginRight: 8,
-    marginTop: 1,
   },
   suggestionText: {
     fontSize: 12,
     fontFamily: 'Poppins-Regular',
     color: '#666',
     lineHeight: 16,
-    flex: 1,
+    marginBottom: 2,
   },
   scoresContainer: {
     flexDirection: 'row',
