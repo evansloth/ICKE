@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { Camera as CameraIcon, Image as ImageIcon } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import '/.env';
 
 interface WriteJournalEntryProps {
   onClose?: () => void;
@@ -24,7 +25,7 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
 
   // Replace this with your actual API Gateway / Lambda endpoint that runs Textract
   const TEXTRACT_API_URL = 'https://2sxyz7gmc1.execute-api.us-east-1.amazonaws.com/ocr/textract';
-
+  const NLP_API_URL = 'https://3fksn86ahf.execute-api.us-east-1.amazonaws.com/NLP';
 
   async function uploadAndExtractText(uri: string) {
     // Use expo-image-manipulator to optionally resize/compress and return base64 for any URI.
@@ -60,7 +61,36 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
       throw new Error(`Textract API returned non-JSON response: ${text} (url: ${TEXTRACT_API_URL})`);
     }
     // Expecting the API to return something like: { text: 'extracted text...' }
-    return json.text ?? json.extractedText ?? '';
+    const ocrText = json.text ?? json.extractedText ?? '';
+
+    // Optional post-processing: send extracted text to an NLP/AI service to clean it up
+    // and double-check for readability/formatting. If `NLP_API_URL` is set, we'll POST
+    // the OCR result and expect a JSON response with a cleaned text field.
+    if (ocrText && typeof NLP_API_URL === 'string' && NLP_API_URL.length > 0) {
+      try {
+        const procRes = await fetch(NLP_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: ocrText }),
+        });
+
+        if (procRes.ok) {
+          const procJson = await procRes.json();
+          // Accept several possible field names from the NLP service
+          const cleaned = procJson.text ?? procJson.cleanedText ?? procJson.processedText ?? '';
+          if (cleaned) return cleaned;
+          // If NLP returned nothing useful, fall back to OCR
+          console.warn('NLP service returned empty cleaned text, falling back to OCR text');
+        } else {
+          const body = await procRes.text();
+          console.warn(`NLP service returned ${procRes.status}: ${body}`);
+        }
+      } catch (e) {
+        console.warn('Error calling NLP post-processing service', e);
+      }
+    }
+
+    return ocrText;
   }
 
   const handleOpenCamera = async () => {
