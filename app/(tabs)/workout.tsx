@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View, Alert, Image, Animated, Modal } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface WorkoutSession {
   id: string;
@@ -62,53 +63,62 @@ export default function WorkoutPage() {
     loadWorkoutData();
   }, []);
 
-  const loadWorkoutData = () => {
-    // In a real app, this would load from AsyncStorage or a database
-    // For now, we'll simulate some data based on recent analyses
-    const mockStats: WorkoutStats = {
-      totalSessions: 12,
-      averageAccuracy: 78.5,
-      totalDuration: 480, // minutes
-      bestAccuracy: 94.2,
-      recentSessions: [
-        {
-          id: '1',
-          date: 'Today',
-          duration: 25,
-          accuracy: 87.3,
-          exerciseType: 'Push-ups',
-        },
-        {
-          id: '2',
-          date: 'Yesterday',
-          duration: 30,
-          accuracy: 82.1,
-          exerciseType: 'Squats',
-        }
-      ]
-    };
-    setWorkoutStats(mockStats);
+  const loadWorkoutData = async () => {
+    try {
+      const savedData = await AsyncStorage.getItem('workoutStats');
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        setWorkoutStats(parsedData);
+        console.log('Workout data loaded from AsyncStorage');
+      } else {
+        // Initialize with default data if no saved data exists
+        const initialStats: WorkoutStats = {
+          totalSessions: 0,
+          averageAccuracy: 0,
+          totalDuration: 0,
+          bestAccuracy: 0,
+          recentSessions: []
+        };
+        setWorkoutStats(initialStats);
+      }
+    } catch (error) {
+      console.error('Error loading workout data:', error);
+    }
   };
 
-  const updateWorkoutStats = (newResult: any) => {
-    // Update stats with new analysis result
-    const newSession: WorkoutSession = {
-      id: Date.now().toString(),
-      date: 'Just now',
-      duration: Math.round((newResult.total_frames || 60) / 2), // Estimate duration
-      accuracy: newResult.accuracy || 0,
-      exerciseType: 'Form Analysis',
-    };
+  const updateWorkoutStats = async (newResult: any) => {
+    try {
+      // Create new session
+      const newSession: WorkoutSession = {
+        id: Date.now().toString(),
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        duration: Math.round((newResult.total_frames || 60) / 2), // Estimate duration
+        accuracy: newResult.accuracy || 0,
+        exerciseType: 'Arm Curls', // Currently only Arm Curls is supported
+      };
 
-    setWorkoutStats(prev => ({
-      totalSessions: prev.totalSessions + 1,
-      averageAccuracy: ((prev.averageAccuracy * prev.totalSessions) + newResult.accuracy) / (prev.totalSessions + 1),
-      totalDuration: prev.totalDuration + newSession.duration,
-      bestAccuracy: Math.max(prev.bestAccuracy, newResult.accuracy),
-      recentSessions: [newSession, ...prev.recentSessions.slice(0, 4)]
-    }));
+      // Calculate updated stats
+      const updatedStats: WorkoutStats = {
+        totalSessions: workoutStats.totalSessions + 1,
+        averageAccuracy: workoutStats.totalSessions === 0 
+          ? newResult.accuracy 
+          : ((workoutStats.averageAccuracy * workoutStats.totalSessions) + newResult.accuracy) / (workoutStats.totalSessions + 1),
+        totalDuration: workoutStats.totalDuration + newSession.duration,
+        bestAccuracy: Math.max(workoutStats.bestAccuracy, newResult.accuracy),
+        recentSessions: [newSession, ...workoutStats.recentSessions.slice(0, 4)]
+      };
 
-    setLastAnalysisResult(newResult);
+      // Save to AsyncStorage
+      await AsyncStorage.setItem('workoutStats', JSON.stringify(updatedStats));
+      
+      // Update local state
+      setWorkoutStats(updatedStats);
+      setLastAnalysisResult(newResult);
+      
+      console.log('Workout stats saved to AsyncStorage successfully!');
+    } catch (error) {
+      console.error('Error saving workout stats:', error);
+    }
   };
 
   const startLoadingAnimation = () => {
@@ -883,4 +893,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-
