@@ -9,6 +9,10 @@ interface ConversationResponse {
   suggestions: string[];
 }
 
+interface ChatResponse {
+  response: string;
+}
+
 interface ChatMessage {
   id: string;
   text: string;
@@ -28,6 +32,7 @@ export default function ViewJournal() {
   const [isChatting, setIsChatting] = useState(false);
 
   const CONVERSATION_API_URL = 'https://fmkrb4vex3.execute-api.us-east-1.amazonaws.com/conversation';
+  const CHAT_API_URL = 'https://jxi8n0j0k5.execute-api.us-east-1.amazonaws.com/chat';
 
 
 
@@ -50,6 +55,7 @@ export default function ViewJournal() {
       }
 
       const result: ConversationResponse = await response.json();
+      console.log('Analysis API Response:', result);
       setAnalysisResult(result);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -79,19 +85,38 @@ export default function ViewJournal() {
     setIsChatting(true);
 
     try {
-      const response = await fetch(CONVERSATION_API_URL, {
+      const response = await fetch(CHAT_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ journal: currentInput }),
+        body: JSON.stringify({ message: currentInput }),
       });
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-      const result: ConversationResponse = await response.json();
+      const result = await response.json();
+      console.log('Chat API Response:', JSON.stringify(result, null, 2));
+
+      // Handle different response formats
+      let responseText = '';
+      if (result.response) {
+        // Expected format: { "response": "text" }
+        responseText = result.response;
+      } else if (result.feedback) {
+        // If it's returning the old format: { "feedback": "text", "suggestions": [...] }
+        responseText = result.feedback;
+        console.warn('Chat endpoint returned feedback/suggestions format instead of response format');
+      } else if (typeof result === 'string') {
+        // If it's just a string
+        responseText = result;
+      } else {
+        // Fallback
+        responseText = 'I understand how you feel. Would you like to talk more about it?';
+        console.error('Unexpected chat response format:', result);
+      }
 
       const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: result.feedback || 'I understand how you feel. Would you like to talk more about it?',
+        text: responseText,
         isUser: false,
         timestamp: new Date()
       };
