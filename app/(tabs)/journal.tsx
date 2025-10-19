@@ -48,10 +48,64 @@ export default function JournalPage() {
   );
 
   const carouselData = [
-    { id: '1', title: 'Afternoon Walk Journal', date: 'Saturday, Oct 18, 2025', backgroundColor: '#A8B5A8' },
-    { id: '2', title: 'Morning Reflection', date: 'Friday, Oct 17, 2025', backgroundColor: '#B8A8B5' },
-    { id: '3', title: 'Evening Thoughts', date: 'Thursday, Oct 16, 2025', backgroundColor: '#A8B8B5' },
-  ];
+  { 
+    id: '1', 
+    title: 'Afternoon Walk Journal', 
+    date: 'Saturday, Oct 18, 2025', 
+    backgroundColor: '#A8B5A8',
+    text: 'A calm walk through the park helped me slow down and reconnect with the present moment.'
+  },
+  { 
+    id: '2', 
+    title: 'Morning Reflection', 
+    date: 'Friday, Oct 17, 2025', 
+    backgroundColor: '#B8A8B5',
+    text: 'Started the day with gratitude and a cup of tea — small rituals, big impact.'
+  },
+  { 
+    id: '3', 
+    title: 'Evening Thoughts', 
+    date: 'Thursday, Oct 16, 2025', 
+    backgroundColor: '#A8B8B5',
+    text: 'The sunset reminded me that endings can be peaceful too.'
+  },
+  { 
+    id: '4', 
+    title: 'Mindful Monday', 
+    date: 'Monday, Oct 13, 2025', 
+    backgroundColor: '#B8A8B5',
+    text: 'Focused on breathing between meetings — it made the whole day feel lighter.'
+  },
+  { 
+    id: '5', 
+    title: 'Wellness Wednesday', 
+    date: 'Wednesday, Oct 15, 2025', 
+    backgroundColor: '#A8B5A8',
+    text: 'Took time to stretch and hydrate — simple actions that fueled my energy.'
+  },
+  { 
+    id: '6', 
+    title: 'Gratitude Journal', 
+    date: 'Tuesday, Oct 14, 2025', 
+    backgroundColor: '#B8A8B5',
+    text: 'Listed three things I was thankful for — and felt my mood lift instantly.'
+  },
+  { 
+    id: '7', 
+    title: 'Self-Care Sunday', 
+    date: 'Sunday, Oct 12, 2025', 
+    backgroundColor: '#A8B5A8',
+    text: 'Unplugged for a few hours to read and rest — it felt like a quiet reset.'
+  },
+  { 
+    id: '8', 
+    title: 'Focus Friday', 
+    date: 'Friday, Oct 10, 2025', 
+    backgroundColor: '#B8A8B5',
+    text: 'Tuned out distractions and worked deeply — a satisfying end to the week.'
+  },
+];
+
 
   const scrollX = useRef(new Animated.Value(0)).current;
 
@@ -80,10 +134,22 @@ export default function JournalPage() {
       extrapolate: 'clamp',
     });
 
+    const handleCarouselItemPress = () => {
+      router.push({
+        pathname: '/view-journal',
+        params: {
+          text: item.text,
+          title: item.title,
+          date: item.date,
+          backgroundColor: item.backgroundColor
+        }
+      });
+    };
+
     return (
       <TouchableOpacity
         activeOpacity={0.9}
-        onPress={() => router.push('/view-journal')}
+        onPress={handleCarouselItemPress}
       >
         <Animated.View
           style={[

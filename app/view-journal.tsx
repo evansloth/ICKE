@@ -1,15 +1,11 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Send } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface ConversationResponse {
   feedback: string;
   suggestions: string[];
-}
-
-interface ChatResponse {
-  response: string;
 }
 
 interface ChatMessage {
@@ -19,11 +15,49 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+
+
 export default function ViewJournal() {
   const router = useRouter();
-  const [journalText] = useState(
-    "Today felt different somehow. The coffee tasted better, the sun seemed warmer. I called Mom after weeks of meaning to. Her laugh reminded me why small gestures matter most. Tomorrow, I'll do better."
-  );
+  const params = useLocalSearchParams();
+  
+  // Parameter validation and fallback logic
+  const validateAndGetParams = () => {
+    const fallbackText = "Today felt different somehow. The coffee tasted better, the sun seemed warmer. I called Mom after weeks of meaning to. Her laugh reminded me why small gestures matter most. Tomorrow, I'll do better.";
+    const fallbackTitle = "Untitled Entry";
+    const fallbackDate = new Date().toISOString();
+    const fallbackBackgroundColor = '#E8F5E8';
+
+    const text = params.text as string;
+    const title = params.title as string;
+    const date = params.date as string;
+    const backgroundColor = params.backgroundColor as string;
+
+    return {
+      text: text && text.trim() ? text : fallbackText,
+      title: title && title.trim() ? title : fallbackTitle,
+      date: date && date.trim() ? date : fallbackDate,
+      backgroundColor: backgroundColor || fallbackBackgroundColor
+    };
+  };
+
+  const journalData = validateAndGetParams();
+  const [journalText, setJournalText] = useState(journalData.text);
+  const [journalTitle, setJournalTitle] = useState(journalData.title);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(journalData.title);
+  const [editedText, setEditedText] = useState(journalData.text);
+  
+  // ScrollView ref for auto-scrolling
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // Log the received parameters for debugging
+  console.log('ViewJournal received params:', {
+    title: journalData.title,
+    date: journalData.date,
+    backgroundColor: journalData.backgroundColor,
+    textLength: journalData.text.length
+  });
   const [analysisResult, setAnalysisResult] = useState<ConversationResponse | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -134,27 +168,117 @@ export default function ViewJournal() {
     setChatMessages([]);
   };
 
+  // Function to scroll to bottom when chat input is focused
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  // ------------------------------
+  // Journal editing functionality
+  // ------------------------------
+  const handleEdit = () => {
+    setIsEditing(true);
+    setEditedTitle(journalTitle);
+    setEditedText(journalText);
+  };
+
+  const handleSave = () => {
+    // Update title if it has content, otherwise keep original
+    if (editedTitle.trim()) {
+      setJournalTitle(editedTitle.trim());
+    } else {
+      setEditedTitle(journalTitle);
+    }
+    
+    // Update text if it has content, otherwise keep original
+    if (editedText.trim()) {
+      setJournalText(editedText.trim());
+    } else {
+      setEditedText(journalText);
+    }
+    
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditedTitle(journalTitle);
+    setEditedText(journalText);
+    setIsEditing(false);
+  };
+
+  // Parse date for display with robust handling of different formats
+  const parseDate = (dateString: string) => {
+    try {
+      let date: Date;
+      
+      // Try parsing as ISO string first
+      date = new Date(dateString);
+      
+      // If that fails, try parsing common formats
+      if (isNaN(date.getTime())) {
+        // Try parsing formatted date strings like "December 19, 2024 at 2:30 PM"
+        const dateMatch = dateString.match(/(\w+)\s+(\d+),\s+(\d+)/);
+        if (dateMatch) {
+          date = new Date(`${dateMatch[1]} ${dateMatch[2]}, ${dateMatch[3]}`);
+        }
+      }
+      
+      // If still invalid, use current date as fallback
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date format received:', dateString);
+        date = new Date();
+      }
+      
+      return {
+        day: date.getDate().toString(),
+        month: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase(),
+        time: date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+      };
+    } catch (error) {
+      console.error('Error parsing date:', error);
+      // Fallback to current date
+      const today = new Date();
+      return {
+        day: today.getDate().toString(),
+        month: today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase(),
+        time: today.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+      };
+    }
+  };
+
+  const dateInfo = parseDate(journalData.date);
+
   useEffect(() => {
     analyzeJournal(journalText);
-  }, []);
+  }, [journalText]);
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView 
+        ref={scrollViewRef}
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.headerContainer}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#000" />
+            <ArrowLeft size={24} color="#ffffffff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Journal</Text>
         </View>
 
-        <View style={[styles.journalCard, { backgroundColor: '#E8F5E8' }]}>
+        <View style={[styles.journalCard, { backgroundColor: journalData.backgroundColor }]}>
           <View style={styles.journalHeader}>
             <View style={styles.dateContainer}>
-              <Text style={styles.dateNumber}>17</Text>
+              <Text style={styles.dateNumber}>{dateInfo.day}</Text>
               <View style={styles.dateDetails}>
-                <Text style={styles.month}>OCTOBER 2025</Text>
-                <Text style={styles.time}>2:08 AM</Text>
+                <Text style={styles.month}>{dateInfo.month}</Text>
+                <Text style={styles.time}>{dateInfo.time}</Text>
               </View>
             </View>
             <Text style={styles.emoji}>🙂</Text>
@@ -164,15 +288,61 @@ export default function ViewJournal() {
 
           <View style={styles.journalContent}>
             <View style={styles.journalTitleRow}>
-              <Text style={styles.sectionTitle}>Journal</Text>
-              <Text style={styles.editButton}>Edit</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.titleEditInput}
+                  value={editedTitle}
+                  onChangeText={setEditedTitle}
+                  placeholder="Enter title..."
+                  placeholderTextColor="#B9B9B9"
+                  maxLength={100}
+                  multiline={false}
+                />
+              ) : (
+                <>
+                  <TouchableOpacity style={styles.titleContainer} onPress={handleEdit}>
+                    <Text style={[styles.journalTitleText, styles.editableTitle]}>{journalTitle}</Text>
+                    <View style={styles.editIndicator} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleEdit}>
+                    <Text style={styles.editButton}>Edit</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
-            <Text style={styles.journalText}>{journalText}</Text>
+            
+            {isEditing ? (
+              <TextInput
+                style={styles.textEditInput}
+                value={editedText}
+                onChangeText={setEditedText}
+                placeholder="Write your journal entry..."
+                placeholderTextColor="#B9B9B9"
+                multiline={true}
+                textAlignVertical="top"
+                maxLength={2000}
+              />
+            ) : (
+              <TouchableOpacity onPress={handleEdit}>
+                <Text style={[styles.journalText, styles.editableText]}>{journalText}</Text>
+              </TouchableOpacity>
+            )}
+            
+            {isEditing && (
+              <View style={styles.editButtonsContainer}>
+                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <View style={styles.divider} />
 
-          <View style={[styles.analysisSection, { backgroundColor: '#E8F5E8', borderRadius: 16, marginHorizontal: 16, paddingHorizontal: 24, paddingVertical: 20 }]}>
+          <View style={[styles.analysisSection, { backgroundColor: journalData.backgroundColor, borderRadius: 16, marginHorizontal: 16, paddingHorizontal: 24, paddingVertical: 20 }]}>
             <View style={styles.analysisTitleRow}>
               <Text style={styles.sectionTitle}>Mood Booster:</Text>
               <TouchableOpacity style={styles.refreshButton} onPress={() => analyzeJournal(journalText)} disabled={isAnalyzing}>
@@ -243,6 +413,7 @@ export default function ViewJournal() {
                 placeholderTextColor="#B9B9B9"
                 value={chatInput}
                 onChangeText={setChatInput}
+                onFocus={scrollToBottom}
                 multiline
                 maxLength={500}
               />
@@ -257,7 +428,7 @@ export default function ViewJournal() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -357,6 +528,95 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins-Bold',
     color: '#A7A7A7',
+  },
+  journalTitleText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Bold',
+    color: '#333',
+    flex: 1,
+  },
+  editableTitle: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent',
+  },
+  titleContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  editIndicator: {
+    position: 'absolute',
+    bottom: -2,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    opacity: 0.5,
+  },
+  titleEditContainer: {
+    flex: 1,
+  },
+  titleEditInput: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Bold',
+    color: '#333',
+    borderBottomWidth: 2,
+    borderBottomColor: '#6725C9',
+    paddingVertical: 4,
+    marginBottom: 12,
+    flex: 1,
+  },
+  textEditInput: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Medium',
+    color: '#000',
+    lineHeight: 24,
+    borderWidth: 2,
+    borderColor: '#6725C9',
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 120,
+    marginBottom: 16,
+  },
+  editableText: {
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderRadius: 4,
+    padding: 4,
+    marginLeft: -4,
+  },
+  editButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  saveButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#6725C9',
+    borderRadius: 12,
+    flex: 1,
+    maxWidth: 120,
+  },
+  saveButtonText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  cancelButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 12,
+    flex: 1,
+    maxWidth: 120,
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#666',
+    textAlign: 'center',
   },
   editButton: {
     fontSize: 16,
