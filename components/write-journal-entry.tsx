@@ -9,9 +9,11 @@ import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Text, T
 
 interface WriteJournalEntryProps {
   onClose?: () => void;
+  suggestionType?: string;
+  suggestionTitle?: string;
 }
 
-export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
+export default function WriteJournalEntry({ onClose, suggestionType, suggestionTitle }: WriteJournalEntryProps) {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -28,6 +30,29 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
   const TEXTRACT_API_URL = 'https://2sxyz7gmc1.execute-api.us-east-1.amazonaws.com/ocr/textract';
   const NLP_API_URL = 'https://3fksn86ahf.execute-api.us-east-1.amazonaws.com/NLP';
   const DB_API_URL = "https://0q9swf3cmf.execute-api.us-east-1.amazonaws.com/DB";
+
+  const getSuggestionPrompts = (type?: string) => {
+    if (type === 'daily') {
+      return [
+        "What was the highlight of your day?",
+        "What challenged you today?",
+        "What are you grateful for?",
+        "What did you learn today?",
+        "How are you feeling right now?"
+      ];
+    } else if (type === 'happiness') {
+      return [
+        "What activities bring you the most joy?",
+        "Who are the people that make you happiest?",
+        "What accomplishments make you proud?",
+        "What simple pleasures do you enjoy?",
+        "What dreams and goals excite you?"
+      ];
+    }
+    return [];
+  };
+
+  const suggestionPrompts = getSuggestionPrompts(suggestionType);
 
   async function uploadAndExtractText(uri: string, runNLP: boolean = true) {
     // Use expo-image-manipulator to optionally resize/compress and return base64 for any URI.
@@ -433,6 +458,26 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
               </TouchableOpacity>
             </View>
 
+            {suggestionPrompts.length > 0 && (
+              <View style={styles.suggestionsSection}>
+                <Text style={styles.suggestionHeader}>{suggestionTitle}</Text>
+                <Text style={styles.suggestionSubheader}>Here are some prompts to help you get started:</Text>
+                {suggestionPrompts.map((prompt, index) => (
+                  <TouchableOpacity 
+                    key={index}
+                    style={styles.suggestionPromptItem}
+                    onPress={() => {
+                      const newContent = content ? `${content}\n\n${prompt}\n` : `${prompt}\n`;
+                      setContent(newContent);
+                    }}
+                  >
+                    <Text style={styles.suggestionBullet}>•</Text>
+                    <Text style={styles.suggestionPromptText}>{prompt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
             <TextInput
               style={styles.journalText}
               placeholder="Start writing...."
@@ -826,6 +871,47 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
+  },
+  suggestionsSection: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 16,
+    padding: 16,
+    marginVertical: 16,
+  },
+  suggestionHeader: {
+    fontSize: 18,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#4A4A4A',
+    marginBottom: 8,
+  },
+  suggestionSubheader: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#8B8B8B',
+    marginBottom: 16,
+  },
+  suggestionPromptItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  suggestionBullet: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Medium',
+    color: '#A8B5A8',
+    marginRight: 8,
+    marginTop: 2,
+  },
+  suggestionPromptText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#4A4A4A',
+    flex: 1,
+    lineHeight: 20,
   },
 });
 

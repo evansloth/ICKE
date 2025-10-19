@@ -2,7 +2,7 @@ import FloatingActionMenu from '@/components/floating-action-menu';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Clock, Play, Target, TrendingUp, Zap } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Animated, Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 

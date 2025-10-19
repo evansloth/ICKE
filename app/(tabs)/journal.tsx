@@ -1,7 +1,7 @@
 import FloatingActionMenu from '@/components/floating-action-menu';
 import { useRouter } from 'expo-router';
 import { BookOpen, Clock, Plus } from 'lucide-react-native';
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Animated, Dimensions, FlatList, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const screenWidth = Dimensions.get('window').width;
@@ -273,7 +273,16 @@ export default function JournalPage() {
               style={styles.suggestionImage}
             />
             <Text style={styles.suggestionDescription}>Write about your day</Text>
-            <TouchableOpacity style={styles.startButton}>
+            <TouchableOpacity 
+              style={styles.startButton}
+              onPress={() => router.push({
+                pathname: '/write-journal',
+                params: { 
+                  suggestionType: 'daily',
+                  suggestionTitle: 'Write about your day'
+                }
+              } as any)}
+            >
               <Text style={styles.startButtonText}>Start</Text>
             </TouchableOpacity>
           </View>
@@ -284,7 +293,16 @@ export default function JournalPage() {
               style={styles.suggestionImage}
             />
             <Text style={styles.suggestionDescription}>What makes you happy?</Text>
-            <TouchableOpacity style={styles.startButton}>
+            <TouchableOpacity 
+              style={styles.startButton}
+              onPress={() => router.push({
+                pathname: '/write-journal',
+                params: { 
+                  suggestionType: 'happiness',
+                  suggestionTitle: 'What makes you happy?'
+                }
+              } as any)}
+            >
               <Text style={styles.startButtonText}>Start</Text>
             </TouchableOpacity>
           </View>
@@ -554,7 +572,8 @@ const styles = StyleSheet.create({
     color: '#4A4A4A',
     textAlign: 'center',
     paddingHorizontal: 8,
-    marginVertical: 12,
+    marginTop: 12,
+    marginBottom: 40,
     lineHeight: 20,
   },
   startButton: {
