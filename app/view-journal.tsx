@@ -1,30 +1,100 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Send } from 'lucide-react-native';
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
+interface ConversationResponse {
+  counselor: {
+    feedback: string;
+    suggestions: string[];
+  };
+  sentiment: string;
+}
 
 export default function ViewJournal() {
   const router = useRouter();
+  const [journalText] = useState(
+    "Today felt different somehow. The coffee tasted better, the sun seemed warmer. I called Mom after weeks of meaning to. Her laugh reminded me why small gestures matter most. Tomorrow, I'll do better."
+  );
+  const [analysisResult, setAnalysisResult] = useState<ConversationResponse | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatResponse, setChatResponse] = useState('');
+  const [isChatting, setIsChatting] = useState(false);
+
+  const CONVERSATION_API_URL = 'https://fmkrb4vex3.execute-api.us-east-1.amazonaws.com/conversation';
+
+
+
+  // ------------------------------
+  // Analyze journal
+  // ------------------------------
+  const analyzeJournal = async (text: string) => {
+    setIsAnalyzing(true);
+    try {
+      const requestBody = { journal: text };
+      const response = await fetch(CONVERSATION_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+      }
+
+      const result: ConversationResponse = await response.json();
+      setAnalysisResult(result);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Alert.alert('Error', `Failed to analyze journal: ${errorMessage}`);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // ------------------------------
+  // Chat functionality
+  // ------------------------------
+  const sendChatMessage = async () => {
+    if (!chatInput.trim()) return;
+    setIsChatting(true);
+
+    try {
+      const response = await fetch(CONVERSATION_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ journal: chatInput }),
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      const result: ConversationResponse = await response.json();
+      setChatResponse(result.counselor.feedback || 'I understand how you feel. Would you like to talk more about it?');
+      setChatInput('');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+    } finally {
+      setIsChatting(false);
+    }
+  };
+
+  useEffect(() => {
+    analyzeJournal(journalText);
+  }, []);
 
   return (
-    <LinearGradient
-      colors={['#ebead6', '#f9eee9']}
-      start={{ x: 0, y: 1 }}
-      end={{ x: 1, y: 0 }}
-      style={styles.container}
-    >
+    <LinearGradient colors={['#ebead6', '#f9eee9']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <ArrowLeft size={24} color="#000" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Journal</Text>
         </View>
-        
+
         <View style={styles.journalCard}>
           <View style={styles.journalHeader}>
             <View style={styles.dateContainer}>
@@ -36,46 +106,90 @@ export default function ViewJournal() {
             </View>
             <Text style={styles.emoji}>🙂</Text>
           </View>
-          
+
           <View style={styles.divider} />
-          
+
           <View style={styles.journalContent}>
             <View style={styles.journalTitleRow}>
               <Text style={styles.sectionTitle}>Journal</Text>
               <Text style={styles.editButton}>Edit</Text>
             </View>
-            
-            <Text style={styles.journalText}>
-              Today felt different somehow. The coffee tasted better, the sun seemed warmer. I called Mom after weeks of meaning to. Her laugh reminded me why small gestures matter most. Tomorrow, I'll do better.
-            </Text>
+            <Text style={styles.journalText}>{journalText}</Text>
           </View>
-          
+
           <View style={styles.divider} />
-          
+
           <View style={styles.analysisSection}>
-            <Text style={styles.sectionTitle}>NLP Analysis:</Text>
-            {/* Analysis content would go here */}
+            <View style={styles.analysisTitleRow}>
+              <Text style={styles.sectionTitle}>Mood Booster:</Text>
+              <TouchableOpacity style={styles.refreshButton} onPress={() => analyzeJournal(journalText)} disabled={isAnalyzing}>
+                <Text style={styles.refreshButtonText}>{isAnalyzing ? 'Analyzing...' : 'Refresh'}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {isAnalyzing ? (
+              <Text style={styles.loadingText}>⏳ Analyzing your journal...</Text>
+            ) : analysisResult ? (
+              <View style={styles.analysisContent}>
+                <Text style={styles.analysisText}>{analysisResult.counselor.feedback}</Text>
+
+                <View style={styles.moodAnalysis}>
+                  <Text style={styles.moodLabel}>Sentiment: {analysisResult.sentiment}</Text>
+                </View>
+
+                {analysisResult.counselor.suggestions.length > 0 && (
+                  <View style={styles.suggestionsContainer}>
+                    <Text style={styles.suggestionsTitle}>Suggestions:</Text>
+                    {analysisResult.counselor.suggestions.map((suggestion: string, i: number) => (
+                      <Text key={i} style={styles.suggestionText}>• {suggestion}</Text>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ) : (
+              <Text style={styles.analysisText}>Tap "Refresh" to analyze your journal entry for mood insights and suggestions.</Text>
+            )}
           </View>
         </View>
-        
+
+        {/* Chat Section */}
         <Text style={styles.chatPrompt}>Need a chat?</Text>
-        
-        <View style={styles.inputContainer}>
-          <View style={styles.textInputContainer}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="What's on your mind?"
-              placeholderTextColor="#B9B9B9"
-            />
+        {chatResponse ? (
+          <View style={styles.chatResponseContainer}>
+            <Text style={styles.chatResponseText}>{chatResponse}</Text>
+            <TouchableOpacity style={styles.newChatButton} onPress={() => setChatResponse('')}>
+              <Text style={styles.newChatButtonText}>Ask something else</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.sendButton}>
-            <Send size={20} color="#1D1D1D" />
-          </TouchableOpacity>
-        </View>
+        ) : (
+          <View style={styles.inputContainer}>
+            <View style={styles.textInputContainer}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="What's on your mind?"
+                placeholderTextColor="#B9B9B9"
+                value={chatInput}
+                onChangeText={setChatInput}
+                multiline
+                maxLength={500}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.sendButton, isChatting && styles.sendButtonDisabled]}
+              onPress={sendChatMessage}
+              disabled={isChatting || !chatInput.trim()}
+            >
+              {isChatting ? <Text style={styles.loadingEmoji}>⏳</Text> : <Send size={20} color="#1D1D1D" />}
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </LinearGradient>
   );
 }
+
+// ... keep all your previous StyleSheet definitions here
+
 
 const styles = StyleSheet.create({
   container: {
@@ -102,7 +216,6 @@ const styles = StyleSheet.create({
   },
   journalCard: {
     width: 332,
-    height: 397,
     backgroundColor: '#FFFFFF',
     borderRadius: 22,
     alignSelf: 'center',
@@ -117,6 +230,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.01,
     shadowRadius: 4,
     elevation: 2,
+    paddingBottom: 20,
   },
   journalHeader: {
     flexDirection: 'row',
@@ -186,19 +300,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 9,
   },
+  analysisTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  refreshButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#6725C9',
+    borderRadius: 12,
+  },
+  refreshButtonText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+  },
   chatPrompt: {
     fontSize: 16,
     fontFamily: 'Poppins-Bold',
     color: '#000',
     textAlign: 'center',
-    marginTop: 100,
+    marginTop: 40,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 20,
-    marginTop: 69,
+    marginTop: 20,
     gap: 12,
   },
   textInputContainer: {
@@ -222,6 +353,122 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
+  },
+  loadingContainer: {
+    marginTop: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#666',
+  },
+  analysisContent: {
+    marginTop: 8,
+  },
+  analysisText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#333',
+    lineHeight: 20,
+  },
+  moodAnalysis: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+  },
+  moodLabel: {
+    fontSize: 13,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#6725C9',
+    marginBottom: 4,
+  },
+  emotionsLabel: {
+    fontSize: 12,
+    fontFamily: 'Poppins-Regular',
+    color: '#666',
+  },
+  suggestionsContainer: {
+    marginTop: 12,
+  },
+  suggestionsTitle: {
+    fontSize: 13,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#333',
+    marginBottom: 6,
+  },
+  suggestionText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-Regular',
+    color: '#666',
+    lineHeight: 16,
+    marginBottom: 2,
+  },
+  scoresContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    gap: 4,
+  },
+  scoreText: {
+    fontSize: 11,
+    fontFamily: 'Poppins-Regular',
+    color: '#666',
+  },
+
+  chatResponseContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  chatResponseText: {
+    fontSize: 15,
+    fontFamily: 'Poppins-Regular',
+    color: '#333',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  newChatButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#6725C9',
+    borderRadius: 20,
+  },
+  newChatButtonText: {
+    fontSize: 13,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+  },
+  loadingEmoji: {
+    fontSize: 16,
+  },
+  testButton: {
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#FF6B6B',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  testButtonText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
   },
 });
 
