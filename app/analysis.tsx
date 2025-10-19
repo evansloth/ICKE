@@ -99,7 +99,7 @@ export default function Analysis() {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.darkSection}>
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.push('/workout')}>
               <ArrowLeft color="#FFFFFF" size={24} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Workout Form Analysis</Text>
