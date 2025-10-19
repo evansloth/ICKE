@@ -37,7 +37,7 @@ export default function WorkoutPage() {
   const [lastAnalysisResult, setLastAnalysisResult] = useState<any>(null);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisStage, setAnalysisStage] = useState('');
-  
+
   // Animation values
   const spinValue = new Animated.Value(0);
   const pulseValue = new Animated.Value(1);
@@ -149,17 +149,17 @@ export default function WorkoutPage() {
   const simulateAnalysisProgress = () => {
     setAnalysisStage('Uploading video...');
     setAnalysisProgress(10);
-    
+
     setTimeout(() => {
       setAnalysisStage('Extracting frames...');
       setAnalysisProgress(30);
     }, 1000);
-    
+
     setTimeout(() => {
       setAnalysisStage('Analyzing form...');
       setAnalysisProgress(60);
     }, 2000);
-    
+
     setTimeout(() => {
       setAnalysisStage('Generating insights...');
       setAnalysisProgress(90);
@@ -316,7 +316,12 @@ export default function WorkoutPage() {
 
           <Text style={styles.sectionTitle}>Recent Workouts</Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workoutScrollContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.workoutScrollContainer}
+            contentContainerStyle={styles.workoutScrollContent}
+          >
             {workoutStats.recentSessions.length > 0 ? (
               workoutStats.recentSessions.map((session, index) => (
                 <TouchableOpacity key={session.id} style={styles.workoutCard}>
@@ -339,9 +344,7 @@ export default function WorkoutPage() {
                     </View>
                   </View>
 
-                  <View style={styles.workoutThumbnail}>
-                    <Play size={24} color="#FF7171" />
-                  </View>
+
                 </TouchableOpacity>
               ))
             ) : (
@@ -390,7 +393,7 @@ export default function WorkoutPage() {
             </View>
           </View>
 
-          <View style={{ height: 40 }} />
+          <View style={{ height: 4 }} />
 
           <View style={styles.formSection}>
             <View style={styles.formAnalysisCard}>
@@ -414,7 +417,7 @@ export default function WorkoutPage() {
         </View>
       </ScrollView>
       <FloatingActionMenu />
-      
+
       {/* Loading Modal */}
       <Modal
         visible={isAnalyzing}
@@ -441,10 +444,10 @@ export default function WorkoutPage() {
             >
               <Target size={40} color="#FF7171" />
             </Animated.View>
-            
+
             <Text style={styles.loadingTitle}>Analyzing Your Form</Text>
             <Text style={styles.loadingStage}>{analysisStage}</Text>
-            
+
             <View style={styles.progressBarContainer}>
               <View style={styles.progressBarBackground}>
                 <Animated.View
@@ -458,11 +461,11 @@ export default function WorkoutPage() {
               </View>
               <Text style={styles.progressText}>{analysisProgress}%</Text>
             </View>
-            
+
             <View style={styles.loadingSteps}>
               <View style={[styles.loadingStep, analysisProgress >= 10 && styles.loadingStepActive]}>
                 <View style={[
-                  styles.loadingStepDot, 
+                  styles.loadingStepDot,
                   analysisProgress >= 10 && { backgroundColor: '#FF7171' }
                 ]} />
                 <Text style={[
@@ -472,7 +475,7 @@ export default function WorkoutPage() {
               </View>
               <View style={[styles.loadingStep, analysisProgress >= 30 && styles.loadingStepActive]}>
                 <View style={[
-                  styles.loadingStepDot, 
+                  styles.loadingStepDot,
                   analysisProgress >= 30 && { backgroundColor: '#FF7171' }
                 ]} />
                 <Text style={[
@@ -482,7 +485,7 @@ export default function WorkoutPage() {
               </View>
               <View style={[styles.loadingStep, analysisProgress >= 60 && styles.loadingStepActive]}>
                 <View style={[
-                  styles.loadingStepDot, 
+                  styles.loadingStepDot,
                   analysisProgress >= 60 && { backgroundColor: '#FF7171' }
                 ]} />
                 <Text style={[
@@ -492,7 +495,7 @@ export default function WorkoutPage() {
               </View>
               <View style={[styles.loadingStep, analysisProgress >= 90 && styles.loadingStepActive]}>
                 <View style={[
-                  styles.loadingStepDot, 
+                  styles.loadingStepDot,
                   analysisProgress >= 90 && { backgroundColor: '#FF7171' }
                 ]} />
                 <Text style={[
@@ -581,16 +584,22 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'Poppins-Medium',
     fontSize: 15,
-    marginTop: 32,
+    marginTop: 16,
     marginLeft: 24,
   },
   workoutScrollContainer: {
-    marginTop: 18,
+    marginTop: 8,
+    height: 100,
+    marginBottom: 0,
+    paddingBottom: 0,
+  },
+  workoutScrollContent: {
     paddingLeft: 21,
+    paddingBottom: 0,
   },
   workoutCard: {
     width: 200,
-    height: 140,
+    height: 100,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     marginRight: 16,
@@ -637,16 +646,10 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 4,
   },
-  workoutThumbnail: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
-  },
+
   emptyWorkoutCard: {
     width: 200,
-    height: 140,
+    height: 100,
     backgroundColor: '#F8F9FA',
     borderRadius: 16,
     marginRight: 16,
@@ -670,7 +673,7 @@ const styles = StyleSheet.create({
   },
   addWorkoutCard: {
     width: 120,
-    height: 140,
+    height: 100,
     backgroundColor: '#F8F9FA',
     borderRadius: 16,
     marginRight: 21,
@@ -679,6 +682,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FF7171',
     borderStyle: 'dashed',
+    marginBottom: 0,
+    paddingBottom: 0,
   },
   addWorkoutIcon: {
     width: 40,
@@ -701,9 +706,10 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    marginTop: 35,
+    marginTop: 8,
     marginHorizontal: 21,
-    justifyContent: 'space-between',
+    //justifyContent: 'space-between',
+    paddingTop: 0,
     gap: 12,
   },
   statsCard: {
@@ -742,7 +748,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   formSection: {
-    marginTop: 30,
+    marginTop: 8,
     marginHorizontal: 24,
   },
   formAnalysisCard: {
