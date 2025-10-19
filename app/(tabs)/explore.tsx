@@ -4,14 +4,12 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useExploreState, type Article } from '@/hooks/use-explore-state';
 import * as Haptics from 'expo-haptics';
-import { Bell, Heart, RotateCcw, X } from 'lucide-react-native';
+import { Heart, RotateCcw, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Dimensions, Image, Linking, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolate,
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -89,8 +87,8 @@ export default function ExploreScreen() {
           <Text style={styles.headerTitle}>
             Explore
           </Text>
-          <TouchableOpacity style={styles.bellIcon}>
-            <Bell color="#1E1E1E" size={22} />
+          <TouchableOpacity style={styles.profileIcon}>
+            <View style={styles.profileCircle} />
           </TouchableOpacity>
         </View>
 
@@ -115,9 +113,7 @@ export default function ExploreScreen() {
         </View>
 
         {/* Trending Section */}
-        {trendingTopics.length > 0 && (
-          <TrendingSection topics={trendingTopics} colorScheme={colorScheme} />
-        )}
+        <TrendingSection topics={trendingTopics} colorScheme={colorScheme} />
 
         <FloatingActionMenu />
       </SafeAreaView>
@@ -136,9 +132,14 @@ function TagSelectionScreen({ selectedTags, onToggleTag, onContinue, colorScheme
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
+        <TouchableOpacity style={styles.menuIcon}>
+          <View style={styles.menuLine} />
+          <View style={styles.menuLine} />
+          <View style={styles.menuLine} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Explore</Text>
-        <TouchableOpacity style={styles.bellIcon}>
-          <Bell color="#1E1E1E" size={22} />
+        <TouchableOpacity style={styles.profileIcon}>
+          <View style={styles.profileCircle} />
         </TouchableOpacity>
       </View>
 
@@ -208,8 +209,7 @@ function SwipeCard({ article, index, isTop, onSwipe, colorScheme }: {
     const rotateZ = interpolate(
       translateX.value,
       [-screenWidth / 2, 0, screenWidth / 2],
-      [-15, 0, 15],
-      Extrapolate.CLAMP
+      [-15, 0, 15]
     );
 
     return {
@@ -224,48 +224,41 @@ function SwipeCard({ article, index, isTop, onSwipe, colorScheme }: {
     };
   });
 
-  const handleSwipeComplete = (direction: 'left' | 'right') => {
-    'worklet';
-    runOnJS(onSwipe)(direction);
-  };
+  const panGesture = Gesture.Pan()
+    .onChange((event) => {
+      if (!isTop) return;
 
-  const onGestureEvent = (event: any) => {
-    'worklet';
-    if (!isTop) return;
-
-    translateX.value = event.translationX;
-    translateY.value = event.translationY;
-    opacity.value = interpolate(
-      Math.abs(event.translationX),
-      [0, screenWidth / 2],
-      [1, 0.7],
-      Extrapolate.CLAMP
-    );
-  };
-
-  const onGestureEnd = (event: any) => {
-    'worklet';
-    if (!isTop) return;
-
-    const shouldSwipe = Math.abs(event.translationX) > screenWidth * 0.3;
-
-    if (shouldSwipe) {
-      const direction = event.translationX > 0 ? 'right' : 'left';
-      // Add haptic feedback on main thread
-      runOnJS(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium))();
-
-      translateX.value = withTiming(
-        direction === 'right' ? screenWidth : -screenWidth,
-        { duration: 300 }
+      translateX.value = event.translationX;
+      translateY.value = event.translationY;
+      opacity.value = interpolate(
+        Math.abs(event.translationX),
+        [0, screenWidth / 2],
+        [1, 0.7]
       );
-      opacity.value = withTiming(0, { duration: 300 });
-      handleSwipeComplete(direction);
-    } else {
-      translateX.value = withSpring(0);
-      translateY.value = withSpring(0);
-      opacity.value = withSpring(1);
-    }
-  };
+    })
+    .onEnd((event) => {
+      if (!isTop) return;
+
+      const shouldSwipe = Math.abs(event.translationX) > screenWidth * 0.3;
+
+      if (shouldSwipe) {
+        const direction = event.translationX > 0 ? 'right' : 'left';
+
+        // Add haptic feedback
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        translateX.value = withTiming(
+          direction === 'right' ? screenWidth : -screenWidth,
+          { duration: 300 }
+        );
+        opacity.value = withTiming(0, { duration: 300 });
+        onSwipe(direction);
+      } else {
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        opacity.value = withSpring(1);
+      }
+    });
 
   const handleButtonPress = (direction: 'left' | 'right') => {
     if (!isTop) return;
@@ -296,78 +289,63 @@ function SwipeCard({ article, index, isTop, onSwipe, colorScheme }: {
   };
 
   return (
-    <PanGestureHandler
-      onGestureEvent={onGestureEvent}
-      onEnded={onGestureEnd}
-    >
+    <GestureDetector gesture={panGesture}>
       <Animated.View style={[styles.card, animatedStyle]}>
-        <View style={[styles.cardContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-          <View style={styles.cardImage}>
-            {article.imageUrl ? (
-              <Image
-                source={{ uri: article.imageUrl }}
-                style={styles.articleImage}
-                defaultSource={require('@/assets/images/react-logo.png')}
-              />
-            ) : (
+        <View style={styles.cardContent}>
+          {article.imageUrl ? (
+            <Image
+              source={{ uri: article.imageUrl }}
+              style={styles.cardBackgroundImage}
+              defaultSource={require('@/assets/images/react-logo.png')}
+            />
+          ) : (
+            <View style={styles.cardImagePlaceholder}>
               <Text style={styles.imagePlaceholder}>📰</Text>
-            )}
-          </View>
-
-          <TouchableOpacity style={styles.cardInfo} onPress={handleCardPress} activeOpacity={0.7}>
-            <View style={[styles.categoryBadge, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}>
-              <Text style={styles.categoryText}>{article.category}</Text>
-            </View>
-
-            <Text style={[styles.cardTitle, { color: Colors[colorScheme ?? 'light'].text }]} numberOfLines={2}>
-              {article.title}
-            </Text>
-
-            <Text style={[styles.cardSummary, { color: Colors[colorScheme ?? 'light'].icon }]} numberOfLines={3}>
-              {article.summary || article.description}
-            </Text>
-
-            {article.keyPoints && article.keyPoints.length > 0 && (
-              <View style={styles.keyPointsContainer}>
-                <Text style={[styles.keyPointsTitle, { color: Colors[colorScheme ?? 'light'].text }]}>Key Points:</Text>
-                {article.keyPoints.slice(0, 2).map((point, index) => (
-                  <Text key={index} style={[styles.keyPoint, { color: Colors[colorScheme ?? 'light'].icon }]} numberOfLines={2}>
-                    • {point}
-                  </Text>
-                ))}
-              </View>
-            )}
-
-            <View style={styles.cardMeta}>
-              <Text style={[styles.cardSource, { color: Colors[colorScheme ?? 'light'].icon }]}>
-                {article.authors?.[0] || article.source} • {article.publishDate}
-              </Text>
-              <Text style={[styles.tapHint, { color: Colors[colorScheme ?? 'light'].icon }]}>
-                Tap to read full article
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          {isTop && (
-            <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.rejectButton]}
-                onPress={() => handleButtonPress('left')}
-              >
-                <X size={24} color="#fff" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.actionButton, styles.likeButton]}
-                onPress={() => handleButtonPress('right')}
-              >
-                <Heart size={24} color="#fff" />
-              </TouchableOpacity>
             </View>
           )}
+
+          <View style={styles.cardOverlay}>
+            <TouchableOpacity style={styles.cardInfo} onPress={handleCardPress} activeOpacity={0.7}>
+              <View style={styles.categoryTag}>
+                <Text style={styles.categoryText}>{article.category}</Text>
+              </View>
+
+              <Text style={styles.cardTitle} numberOfLines={3}>
+                {article.title}
+              </Text>
+
+              <Text style={styles.cardSummary} numberOfLines={6}>
+                {article.summary || article.description}
+              </Text>
+
+              <View style={styles.cardMeta}>
+                <Text style={styles.cardSource}>
+                  {article.authors?.[0] || article.source}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {isTop && (
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.rejectButton]}
+                  onPress={() => handleButtonPress('left')}
+                >
+                  <X size={24} color="#fff" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.likeButton]}
+                  onPress={() => handleButtonPress('right')}
+                >
+                  <Heart size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
       </Animated.View>
-    </PanGestureHandler>
+    </GestureDetector>
   );
 }
 
@@ -384,19 +362,19 @@ function TrendingSection({ topics, colorScheme }: {
   };
 
   return (
-    <View style={[styles.trendingContainer, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-      <Text style={[styles.trendingTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-        🔥 Trending Topics You're Reading
+    <View style={styles.trendingContainer}>
+      <Text style={styles.trendingTitle}>
+        Trending Topics You're Reading
       </Text>
       <View style={styles.trendingTags}>
         {topics.slice(0, 5).map((topic, index) => (
-          <View key={`${topic}-${index}`} style={[styles.trendingTag, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}>
+          <View key={`${topic}-${index}`} style={styles.trendingTag}>
             <Text style={styles.trendingTagText}>{formatTopic(topic)}</Text>
           </View>
         ))}
       </View>
       {topics.length === 0 && (
-        <Text style={[styles.noTrendingText, { color: Colors[colorScheme ?? 'light'].icon }]}>
+        <Text style={styles.noTrendingText}>
           Swipe right on articles to see trending topics!
         </Text>
       )}
@@ -410,14 +388,14 @@ function EmptyState({ onReset, colorScheme }: {
 }) {
   return (
     <View style={styles.emptyState}>
-      <Text style={[styles.emptyStateTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+      <Text style={styles.emptyStateTitle}>
         🎉 You've seen it all!
       </Text>
-      <Text style={[styles.emptyStateSubtitle, { color: Colors[colorScheme ?? 'light'].icon }]}>
+      <Text style={styles.emptyStateSubtitle}>
         No more articles to explore right now.
       </Text>
       <TouchableOpacity
-        style={[styles.resetButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
+        style={styles.resetButton}
         onPress={onReset}
       >
         <RotateCcw size={20} color="#fff" />
@@ -430,60 +408,58 @@ function EmptyState({ onReset, colorScheme }: {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F5F0',
   },
   tagSelectionContent: {
     flex: 1,
-    paddingHorizontal: 21,
-    paddingTop: 20,
+    paddingHorizontal: 24,
+    paddingTop: 40,
   },
   tagSelectionTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1E1E1E',
-    textAlign: 'center',
+    fontSize: 32,
+    fontWeight: '600',
+    color: '#4A4A4A',
     marginBottom: 8,
-    fontFamily: 'Poppins-Bold',
+    fontFamily: 'Poppins-SemiBold',
   },
   tagSelectionSubtitle: {
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 30,
+    color: '#8B8B8B',
+    marginBottom: 40,
     fontFamily: 'Poppins-Regular',
+    lineHeight: 24,
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
     gap: 12,
     marginBottom: 40,
   },
   tagPill: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
   tagPillSelected: {
-    backgroundColor: '#FAD8AE',
-    borderColor: '#F4C2A1',
+    backgroundColor: '#A8B5A8',
+    borderColor: '#A8B5A8',
   },
   tagText: {
-    color: '#666',
+    color: '#8B8B8B',
     fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
   },
   tagTextSelected: {
-    color: '#8B4513',
+    color: '#FFFFFF',
   },
   continueButton: {
-    backgroundColor: '#D0757A',
+    backgroundColor: '#A8B5A8',
     paddingVertical: 16,
-    borderRadius: 10,
+    borderRadius: 24,
     alignItems: 'center',
     marginTop: 20,
   },
@@ -492,241 +468,286 @@ const styles = StyleSheet.create({
   },
   continueButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
   },
   continueButtonTextDisabled: {
-    color: '#999',
+    color: '#8B8B8B',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 21,
-    marginTop: 18,
+    paddingHorizontal: 24,
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  menuIcon: {
+    width: 24,
+    height: 24,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  menuLine: {
+    width: 20,
+    height: 2,
+    backgroundColor: '#8B8B8B',
+    borderRadius: 1,
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
-    color: '#1E1E1E',
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
+    color: '#8B8B8B',
+    letterSpacing: 0.5,
   },
-  bellIcon: {
-    width: 24,
-    height: 24,
+  profileIcon: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  profileCircle: {
+    width: 36,
+    height: 36,
+    backgroundColor: '#B8C5B8',
+    borderRadius: 18,
+  },
   backButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F0F0F0',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: '#A8B5A8',
   },
   backButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
-    color: '#666',
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
+    color: '#FFFFFF',
   },
   cardContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 21,
-    marginTop: 20,
+    paddingHorizontal: 24,
   },
   card: {
     position: 'absolute',
-    width: screenWidth - 42,
-    height: screenHeight * 0.6,
+    width: screenWidth - 48,
+    height: screenHeight * 0.5,
   },
   cardContent: {
     flex: 1,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: 24,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    position: 'relative',
   },
-  cardImage: {
-    height: 180,
-    backgroundColor: '#FAD8AE',
+  cardBackgroundImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+  },
+  cardImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#A8B5A8',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
   imagePlaceholder: {
     fontSize: 48,
+    color: '#FFFFFF',
   },
-  articleImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+  cardOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(168, 181, 168, 0.85)',
+    justifyContent: 'space-between',
   },
   cardInfo: {
     flex: 1,
-    padding: 20,
+    padding: 32,
+    justifyContent: 'space-between',
   },
-  categoryBadge: {
+  categoryTag: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-    marginBottom: 12,
-    backgroundColor: '#DCCEFA',
+    marginBottom: 20,
   },
   categoryText: {
-    color: '#6B46C1',
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
   },
   cardTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    lineHeight: 26,
-    color: '#1E1E1E',
-    fontFamily: 'Poppins-Bold',
+    fontSize: 24,
+    fontWeight: '600',
+    marginBottom: 16,
+    lineHeight: 32,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-SemiBold',
   },
   cardSummary: {
-    fontSize: 15,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#666',
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 20,
+    color: 'rgba(255, 255, 255, 0.9)',
     fontFamily: 'Poppins-Regular',
   },
   keyPointsContainer: {
-    marginBottom: 12,
+    marginBottom: 20,
   },
   keyPointsTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
-    color: '#1E1E1E',
-    marginBottom: 6,
+    color: '#FFFFFF',
+    marginBottom: 8,
   },
   keyPoint: {
-    fontSize: 12,
-    lineHeight: 16,
-    color: '#666',
+    fontSize: 13,
+    lineHeight: 18,
+    color: 'rgba(255, 255, 255, 0.8)',
     fontFamily: 'Poppins-Regular',
-    marginBottom: 3,
+    marginBottom: 4,
   },
   cardMeta: {
-    marginTop: 'auto',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   cardSource: {
-    fontSize: 13,
-    color: '#999',
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
     fontFamily: 'Poppins-Regular',
   },
-  tapHint: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    marginTop: 4,
-    fontFamily: 'Poppins-Regular',
+  readMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  readMoreText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Medium',
+    color: '#FFFFFF',
+    marginRight: 8,
+  },
+  readMoreArrow: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    fontWeight: '300',
   },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 20,
+    paddingVertical: 24,
     paddingHorizontal: 40,
   },
   actionButton: {
-    width: 55,
-    height: 55,
-    borderRadius: 27,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   rejectButton: {
-    backgroundColor: '#D0757A',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   likeButton: {
-    backgroundColor: '#90C695',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   trendingContainer: {
-    paddingHorizontal: 21,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    backgroundColor: '#F5F5F0',
+    marginTop: 'auto',
   },
   trendingTitle: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '600',
-    marginBottom: 12,
-    color: '#1E1E1E',
+    marginBottom: 16,
+    color: '#4A4A4A',
     fontFamily: 'Poppins-SemiBold',
   },
   trendingTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 12,
   },
   trendingTag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-    backgroundColor: '#DCCEFA',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#A8B5A8',
   },
   trendingTagText: {
-    color: '#6B46C1',
-    fontSize: 12,
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '500',
     fontFamily: 'Poppins-Medium',
   },
   noTrendingText: {
-    fontSize: 14,
-    fontStyle: 'italic',
+    fontSize: 16,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 12,
+    color: '#8B8B8B',
     fontFamily: 'Poppins-Regular',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
+    paddingHorizontal: 40,
   },
   emptyStateTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 12,
+    fontSize: 28,
+    fontWeight: '600',
+    marginBottom: 16,
     textAlign: 'center',
-    color: '#1E1E1E',
-    fontFamily: 'Poppins-Bold',
+    color: '#4A4A4A',
+    fontFamily: 'Poppins-SemiBold',
   },
   emptyStateSubtitle: {
-    fontSize: 16,
+    fontSize: 18,
     textAlign: 'center',
-    marginBottom: 30,
-    color: '#666',
+    marginBottom: 40,
+    color: '#8B8B8B',
     fontFamily: 'Poppins-Regular',
+    lineHeight: 26,
   },
   resetButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 10,
-    gap: 8,
-    backgroundColor: '#D0757A',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 24,
+    gap: 12,
+    backgroundColor: '#A8B5A8',
   },
   resetButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
   },

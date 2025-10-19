@@ -1,13 +1,12 @@
 import FloatingActionMenu from '@/components/floating-action-menu';
-import { SpotifyService } from '@/services/spotify-service';
-import { Bell, Calendar, Clock, ExternalLink, Music, Smile, Star, Trophy } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { Bell, Calendar, Clock, ExternalLink, Smile, Star, Trophy } from 'lucide-react-native';
+import React, { useState } from 'react';
 import { Image, Linking, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
-    FadeInDown,
-    FadeInLeft,
-    FadeInRight,
-    FadeInUp
+  FadeInDown,
+  FadeInLeft,
+  FadeInRight,
+  FadeInUp
 } from 'react-native-reanimated';
 
 // Hardcoded articles data
@@ -36,39 +35,16 @@ const articles = [
 ];
 
 export default function DiscoverPage() {
-  const [playlistInfo, setPlaylistInfo] = useState({
-    name: 'Study Vibes',
-    description: 'Perfect background music for focused work and study sessions',
-    imageUrl: '',
-    trackCount: 0,
-    owner: 'Unknown',
-    url: 'https://open.spotify.com/playlist/6EUwvbjPTOYUTyWuuTTvo8'
-  });
-  const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
-  const currentDate = new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   });
 
-  useEffect(() => {
-    loadPlaylistInfo();
-  }, []);
 
-  const loadPlaylistInfo = async () => {
-    setIsLoadingPlaylist(true);
-    try {
-      const info = await SpotifyService.getPlaylistInfo('6EUwvbjPTOYUTyWuuTTvo8');
-      setPlaylistInfo(info);
-    } catch (error) {
-      console.error('Error loading playlist info:', error);
-      // Keep the default values if API fails
-    } finally {
-      setIsLoadingPlaylist(false);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -103,7 +79,7 @@ export default function DiscoverPage() {
             <Text style={styles.achievementTitle}>Academic Excellence</Text>
             <Text style={styles.achievementText}>Got an A in CS 500 level class</Text>
           </Animated.View>
-          
+
           <Animated.View entering={FadeInRight.delay(600)} style={[styles.achievementCard, { backgroundColor: '#FFFAF0' }]}>
             <Star color="#D69E2E" size={22} />
             <Text style={styles.achievementTitle}>Leadership</Text>
@@ -134,41 +110,7 @@ export default function DiscoverPage() {
           <Text style={styles.vibeSubtext}>Stay confident and keep pushing forward</Text>
         </Animated.View>
 
-        {/* Now Playing */}
-        <Animated.Text entering={FadeInLeft.delay(1100)} style={styles.sectionTitle}>Now Playing</Animated.Text>
-        <Animated.View entering={FadeInRight.delay(1200)} style={[styles.card, styles.musicCard]}>
-          <View style={styles.cardHeader}>
-            <Music color="#48BB78" size={26} />
-            <Text style={styles.cardTitle}>Featured Playlist</Text>
-          </View>
-          <TouchableOpacity 
-            onPress={() => Linking.openURL(playlistInfo.url)}
-            style={styles.spotifyContainer}
-          >
-            <View style={styles.spotifyContent}>
-              <View style={styles.spotifyInfo}>
-                <Text style={styles.musicTitle}>🎵 {playlistInfo.name}</Text>
-                <Text style={styles.musicArtist}>by {playlistInfo.owner}</Text>
-                <Text style={styles.spotifyDescription}>
-                  {playlistInfo.description}
-                  {playlistInfo.trackCount > 0 && ` • ${playlistInfo.trackCount} tracks`}
-                </Text>
-              </View>
-              <View style={styles.spotifyButton}>
-                <Text style={styles.spotifyButtonText}>
-                  {isLoadingPlaylist ? 'Loading...' : 'Open in Spotify'}
-                </Text>
-              </View>
-            </View>
-            {playlistInfo.imageUrl && (
-              <Image 
-                source={{ uri: playlistInfo.imageUrl }} 
-                style={styles.playlistImage}
-                resizeMode="cover"
-              />
-            )}
-          </TouchableOpacity>
-        </Animated.View>
+
 
         {/* Quick Stats */}
         <Animated.Text entering={FadeInRight.delay(1300)} style={styles.sectionTitle}>This Week's Highlights</Animated.Text>
@@ -190,12 +132,12 @@ export default function DiscoverPage() {
         {/* Articles Section */}
         <Animated.Text entering={FadeInLeft.delay(1800)} style={styles.sectionTitle}>Latest Articles</Animated.Text>
         {articles.map((article, index) => (
-          <Animated.View 
+          <Animated.View
             key={index}
-            entering={FadeInRight.delay(1900 + (index * 100))} 
+            entering={FadeInRight.delay(1900 + (index * 100))}
             style={[styles.card, styles.articleCard]}
           >
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => Linking.openURL(article.url)}
               style={styles.articleTouchable}
             >
@@ -208,8 +150,8 @@ export default function DiscoverPage() {
                   <Text style={styles.articleSource}>{article.source}</Text>
                   <Text style={styles.articleDescription}>{article.description}</Text>
                 </View>
-                <Image 
-                  source={{ uri: article.thumbnail }} 
+                <Image
+                  source={{ uri: article.thumbnail }}
                   style={styles.articleThumbnail}
                   resizeMode="cover"
                 />
@@ -391,62 +333,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Regular',
     color: '#A0792C',
   },
-  musicCard: {
-    backgroundColor: '#F0FFF4',
-    borderColor: '#9AE6B4',
-  },
-  spotifyContainer: {
-    marginTop: 8,
-  },
-  spotifyContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  spotifyInfo: {
-    flex: 1,
-    marginRight: 16,
-  },
-  musicTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
-    color: '#2D3748',
-    marginBottom: 6,
-  },
-  musicArtist: {
-    fontSize: 15,
-    fontFamily: 'Poppins-Regular',
-    color: '#718096',
-    marginBottom: 8,
-  },
-  spotifyDescription: {
-    fontSize: 13,
-    fontFamily: 'Poppins-Regular',
-    color: '#4A5568',
-    lineHeight: 18,
-  },
-  spotifyButton: {
-    backgroundColor: '#1DB954',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  spotifyButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontFamily: 'Poppins-SemiBold',
-    fontWeight: '600',
-  },
-  playlistImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginTop: 12,
-    alignSelf: 'center',
-  },
+
   statsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 24,
