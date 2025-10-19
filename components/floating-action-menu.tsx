@@ -1,5 +1,5 @@
 import { usePathname, useRouter } from 'expo-router';
-import { BookOpen, CheckCircle, Dumbbell, Home, X } from 'lucide-react-native';
+import { BookOpen, CheckCircle, Dumbbell, Home, X, Newspaper } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -11,14 +11,14 @@ export default function FloatingActionMenu() {
 
   const toggleMenu = () => {
     const toValue = isExpanded ? 0 : 1;
-    
+
     Animated.spring(animation, {
       toValue,
       friction: 5,
       tension: 40,
       useNativeDriver: true,
     }).start();
-    
+
     setIsExpanded(!isExpanded);
   };
 
@@ -29,6 +29,7 @@ export default function FloatingActionMenu() {
 
   const menuItems = [
     { icon: Home, label: 'Discover', route: '/' },
+    { icon: Newspaper, label: 'Explore', route: '/explore' },
     { icon: BookOpen, label: 'Journal', route: '/journal' },
     { icon: Dumbbell, label: 'Workout', route: '/workout' },
     { icon: CheckCircle, label: 'Habits', route: '/habits' },
@@ -41,22 +42,22 @@ export default function FloatingActionMenu() {
         const Icon = item.icon;
         const angle = (100 + index * 35) * (Math.PI / 180); // Spread items in an arc to the left with more spacing
         const radius = 120;
-        
+
         const translateX = animation.interpolate({
           inputRange: [0, 1],
           outputRange: [0, radius * Math.cos(angle)],
         });
-        
+
         const translateY = animation.interpolate({
           inputRange: [0, 1],
           outputRange: [0, -radius * Math.sin(angle)],
         });
-        
+
         const scale = animation.interpolate({
           inputRange: [0, 1],
           outputRange: [0, 1],
         });
-        
+
         const opacity = animation.interpolate({
           inputRange: [0, 0.5, 1],
           outputRange: [0, 0.5, 1],
@@ -84,9 +85,9 @@ export default function FloatingActionMenu() {
               ]}
               onPress={() => navigateTo(item.route)}
             >
-              <Icon 
-                size={20} 
-                color={pathname === item.route ? '#FFFFFF' : '#000000'} 
+              <Icon
+                size={20}
+                color={pathname === item.route ? '#FFFFFF' : '#000000'}
               />
             </TouchableOpacity>
           </Animated.View>
