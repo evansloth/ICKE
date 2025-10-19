@@ -393,7 +393,7 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
           <Text style={styles.headerTitle}>Journal</Text>
         </View>
 
-        <View style={styles.journalCard}>
+        <View style={[styles.journalCard, { backgroundColor: '#E8F0F5' }]}>
           <View style={styles.journalHeader}>
             <View style={styles.dateContainer}>
               <Text style={styles.dateNumber}>17</Text>
@@ -420,7 +420,7 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
               <TextInput
                 style={styles.titleInput}
                 placeholder="Title"
-                placeholderTextColor="#d7d7d7"
+                placeholderTextColor="#B9B9B9"
                 value={title}
                 onChangeText={setTitle}
               />
@@ -436,7 +436,7 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
             <TextInput
               style={styles.journalText}
               placeholder="Start writing...."
-              placeholderTextColor="#d7d7d7"
+              placeholderTextColor="#B9B9B9"
               multiline
               textAlignVertical="top"
               value={content}

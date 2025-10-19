@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Send } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -140,7 +139,7 @@ export default function ViewJournal() {
   }, []);
 
   return (
-    <LinearGradient colors={['#ebead6', '#f9eee9']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={styles.container}>
+    <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.headerContainer}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -149,7 +148,7 @@ export default function ViewJournal() {
           <Text style={styles.headerTitle}>Journal</Text>
         </View>
 
-        <View style={styles.journalCard}>
+        <View style={[styles.journalCard, { backgroundColor: '#E8F5E8' }]}>
           <View style={styles.journalHeader}>
             <View style={styles.dateContainer}>
               <Text style={styles.dateNumber}>17</Text>
@@ -173,7 +172,7 @@ export default function ViewJournal() {
 
           <View style={styles.divider} />
 
-          <View style={styles.analysisSection}>
+          <View style={[styles.analysisSection, { backgroundColor: '#E8F5E8', borderRadius: 16, marginHorizontal: 16, paddingHorizontal: 24, paddingVertical: 20 }]}>
             <View style={styles.analysisTitleRow}>
               <Text style={styles.sectionTitle}>Mood Booster:</Text>
               <TouchableOpacity style={styles.refreshButton} onPress={() => analyzeJournal(journalText)} disabled={isAnalyzing}>
@@ -203,7 +202,7 @@ export default function ViewJournal() {
         </View>
 
         {/* Chat Section */}
-        <View style={styles.chatSection}>
+        <View style={[styles.chatSection, { backgroundColor: '#E8F0F5', borderRadius: 24, padding: 24, marginHorizontal: 24 }]}>
           <View style={styles.chatHeader}>
             <Text style={styles.chatPrompt}>Need a chat?</Text>
             {chatMessages.length > 0 && (
@@ -258,7 +257,7 @@ export default function ViewJournal() {
           </View>
         </View>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -602,4 +601,3 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
-

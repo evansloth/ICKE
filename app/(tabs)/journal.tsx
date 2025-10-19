@@ -48,9 +48,9 @@ export default function JournalPage() {
   );
 
   const carouselData = [
-    { id: '1', title: 'Afternoon Walk Journal', icon: '🌲', date: 'Saturday, Oct 18, 2025' },
-    { id: '2', title: 'Morning Reflection', icon: '☀️', date: 'Friday, Oct 17, 2025' },
-    { id: '3', title: 'Evening Thoughts', icon: '🌙', date: 'Thursday, Oct 16, 2025' },
+    { id: '1', title: 'Afternoon Walk Journal', date: 'Saturday, Oct 18, 2025', backgroundColor: '#A8B5A8' },
+    { id: '2', title: 'Morning Reflection', date: 'Friday, Oct 17, 2025', backgroundColor: '#B8A8B5' },
+    { id: '3', title: 'Evening Thoughts', date: 'Thursday, Oct 16, 2025', backgroundColor: '#A8B8B5' },
   ];
 
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -88,18 +88,21 @@ export default function JournalPage() {
         <Animated.View
           style={[
             styles.carouselItem,
+            { backgroundColor: item.backgroundColor },
             {
               transform: [{ scale }, { perspective: 1000 }, { rotateY }],
               opacity,
             },
           ]}
         >
-          <View style={styles.carouselIcon}>
-            <Text style={styles.carouselIconText}>{item.icon}</Text>
+          <View style={styles.journalCardContent}>
+            <Text style={styles.journalCardTitle}>{item.title}</Text>
+            <Text style={styles.journalCardDate}>{item.date}</Text>
+            <TouchableOpacity style={styles.readMoreButton}>
+              <Text style={styles.readMoreText}>Read more</Text>
+              <Text style={styles.readMoreArrow}>›</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.carouselTitle}>{item.title}</Text>
-          <View style={styles.carouselDivider} />
-          <Text style={styles.carouselDate}>{item.date}</Text>
         </Animated.View>
       </TouchableOpacity>
     );
@@ -122,24 +125,36 @@ export default function JournalPage() {
       <StatusBar barStyle="dark-content" />
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
-          <Text style={styles.journalTitle}>Journal</Text>
+          <Text style={styles.pageTitle}>Journal</Text>
           <TouchableOpacity 
-            style={styles.addButton}
+            style={styles.headerAddButton}
             onPress={() => router.push('/write-journal' as any)}
           >
-            <Plus color="#fff" size={18} />
+            <Plus color="#FFFFFF" size={18} />
           </TouchableOpacity>
         </View>
 
+        <View style={styles.titleSection}>
+          <Text style={styles.mainTitle}>Your Entries</Text>
+          <Text style={styles.mainSubtitle}>Capture your thoughts and reflections</Text>
+        </View>
+
         <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Clock size={14} color="#FF8D00" />
+          <View style={[styles.statItem, { backgroundColor: '#E8F5E8' }]}>
+            <Clock size={16} color="#A8B5A8" />
             <Text style={styles.statText}>26 hr</Text>
           </View>
-          <View style={styles.statItem}>
-            <BookOpen size={13} color="#007DE2" />
+          <View style={[styles.statItem, { backgroundColor: '#F0E8F5' }]}>
+            <BookOpen size={16} color="#B8A8B5" />
             <Text style={styles.statText}>14</Text>
           </View>
+          <TouchableOpacity 
+            style={[styles.statItem, styles.addButton]}
+            onPress={() => router.push('/write-journal' as any)}
+          >
+            <Plus color="#FFFFFF" size={16} />
+            <Text style={[styles.statText, { color: '#FFFFFF' }]}>New</Text>
+          </TouchableOpacity>
         </View>
 
         <FlatList
@@ -186,7 +201,7 @@ export default function JournalPage() {
         <Text style={styles.suggestionsTitle}>Suggestions</Text>
 
         <View style={styles.suggestionsContainer}>
-          <View style={styles.suggestionCard}>
+          <View style={[styles.suggestionCard, { backgroundColor: '#E8F5E8' }]}>
             <Image
               source={require('@/assets/images/sun2.png')}
               style={styles.suggestionImage}
@@ -197,7 +212,7 @@ export default function JournalPage() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.suggestionCard}>
+          <View style={[styles.suggestionCard, { backgroundColor: '#F0E8F5' }]}>
             <Image
               source={require('@/assets/images/heart2.png')}
               style={styles.suggestionImage}
@@ -221,191 +236,246 @@ export default function JournalPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F5F5F0',
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F5F5F0',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    marginTop: 8,
+    paddingHorizontal: 24,
+    marginTop: 20,
+    marginBottom: 40,
   },
-  journalTitle: {
+  pageTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
-    color: '#000',
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
+    color: '#8B8B8B',
+    letterSpacing: 0.5,
   },
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#000',
+  profileIcon: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  profileCircle: {
+    width: 36,
+    height: 36,
+    backgroundColor: '#B8C5B8',
+    borderRadius: 18,
+  },
+  headerAddButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#A8B5A8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  titleSection: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
+  },
+  mainTitle: {
+    fontSize: 32,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#4A4A4A',
+    marginBottom: 8,
+  },
+  mainSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: '#8B8B8B',
+    lineHeight: 24,
+  },
+  addButton: {
+    backgroundColor: '#A8B5A8',
+  },
   statsContainer: {
     flexDirection: 'row',
-    marginTop: 12,
-    paddingHorizontal: 18,
+    marginBottom: 32,
+    paddingHorizontal: 24,
+    gap: 12,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1E1E1E',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 10,
-    minWidth: 80,
-    height: 36,
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    minWidth: 90,
+    height: 44,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   statText: {
-    color: '#fff',
+    color: '#4A4A4A',
     fontSize: 14,
     fontFamily: 'Poppins-SemiBold',
     marginLeft: 8,
   },
   calendarContainer: {
-    marginTop: 18,
-    maxHeight: 65,
+    marginBottom: 32,
+    maxHeight: 70,
   },
   calendarContent: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 24,
   },
   dayItem: {
-    width: 50,
-    height: 65,
-    borderRadius: 16,
-    backgroundColor: '#F2F5F4',
+    width: 56,
+    height: 70,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   activeDayItem: {
-    backgroundColor: '#007DE2',
+    backgroundColor: '#A8B5A8',
   },
   dayText: {
     fontSize: 12,
     fontFamily: 'Poppins-Regular',
-    color: '#B3B3B3',
+    color: '#8B8B8B',
   },
   activeDayText: {
     fontSize: 12,
     fontFamily: 'Poppins-Regular',
-    color: '#fff',
+    color: '#FFFFFF',
   },
   dateText: {
     fontSize: 20,
     fontFamily: 'Poppins-SemiBold',
-    color: '#B3B3B3',
+    color: '#4A4A4A',
     marginTop: 2,
   },
   activeDateText: {
     fontSize: 20,
     fontFamily: 'Poppins-SemiBold',
-    color: '#fff',
+    color: '#FFFFFF',
     marginTop: 2,
   },
   carouselContainer: {
-    marginTop: 20,
-    height: 220,
+    marginBottom: 32,
+    height: 280,
   },
   carouselContent: {
-    paddingHorizontal: 26,
+    paddingHorizontal: 24,
   },
   carouselItem: {
-    width: screenWidth - 52,
-    height: 200,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    width: screenWidth - 48,
+    height: 240,
+    borderRadius: 24,
     marginRight: 0,
-    padding: 20,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  carouselIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#8BC34A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+  journalCardContent: {
+    padding: 32,
   },
-  carouselIconText: {
-    fontSize: 32,
-  },
-  carouselTitle: {
-    fontSize: 22,
+  journalCardTitle: {
+    fontSize: 24,
+    fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
-    color: '#000',
-    marginBottom: 8,
+    color: '#FFFFFF',
+    marginBottom: 12,
+    lineHeight: 32,
   },
-  carouselDivider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 8,
-  },
-  carouselDate: {
-    fontSize: 14,
+  journalCardDate: {
+    fontSize: 16,
     fontFamily: 'Poppins-Regular',
-    color: '#999',
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 20,
+  },
+  readMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  readMoreText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Medium',
+    color: '#FFFFFF',
+    marginRight: 8,
+  },
+  readMoreArrow: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    fontWeight: '300',
   },
   paginationDots: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 16,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#D9D9D9',
-    marginHorizontal: 4,
+    marginHorizontal: 6,
   },
   activeDot: {
-    backgroundColor: '#007DE2',
+    backgroundColor: '#A8B5A8',
     width: 24,
   },
   suggestionsTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-    marginTop: 20,
-    marginLeft: 21,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#4A4A4A',
+    marginTop: 32,
+    marginLeft: 24,
+    marginBottom: 16,
   },
   suggestionsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingHorizontal: 21,
-    marginTop: 10,
-    gap: 12,
+    paddingHorizontal: 24,
+    gap: 16,
   },
   suggestionCard: {
-    width: 175,
-    height: 175,
-    backgroundColor: '#F2F5F4',
-    borderRadius: 25,
-    marginBottom: 15,
+    width: 180,
+    height: 180,
+    borderRadius: 24,
+    marginBottom: 20,
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 20,
-    paddingBottom: 16,
-    paddingHorizontal: 12,
+    paddingTop: 24,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   suggestionImage: {
     width: 80,
@@ -413,30 +483,31 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   suggestionDescription: {
-    fontSize: 11,
+    fontSize: 14,
     fontFamily: 'Poppins-Medium',
-    color: '#000',
+    color: '#4A4A4A',
     textAlign: 'center',
-    paddingHorizontal: 4,
-    marginVertical: 8,
+    paddingHorizontal: 8,
+    marginVertical: 12,
+    lineHeight: 20,
   },
   startButton: {
-    width: 130,
-    height: 38,
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    width: 140,
+    height: 40,
+    backgroundColor: '#A8B5A8',
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
   startButtonText: {
     fontSize: 14,
     fontFamily: 'Poppins-SemiBold',
-    color: '#000',
+    color: '#FFFFFF',
   },
 });
 
