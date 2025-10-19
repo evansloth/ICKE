@@ -60,6 +60,7 @@ export default function ViewJournal() {
   });
   const [analysisResult, setAnalysisResult] = useState<ConversationResponse | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [lastAnalyzed, setLastAnalyzed] = useState<Date | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatting, setIsChatting] = useState(false);
@@ -75,7 +76,11 @@ export default function ViewJournal() {
   const analyzeJournal = async (text: string) => {
     setIsAnalyzing(true);
     try {
-      const requestBody = { journal: text };
+      const requestBody = { 
+        journal: text,
+        requestSuggestions: true,
+        analysisType: 'mood_and_suggestions'
+      };
       const response = await fetch(CONVERSATION_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,9 +92,49 @@ export default function ViewJournal() {
         throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
 
-      const result: ConversationResponse = await response.json();
+      const result = await response.json();
       console.log('Analysis API Response:', result);
-      setAnalysisResult(result);
+      console.log('Raw result type:', typeof result);
+      console.log('Result keys:', Object.keys(result));
+      
+      // Handle different possible response formats
+      let suggestions = result.suggestions || result.recommendations || result.tips || [];
+      
+      // Ensure suggestions is an array
+      if (!Array.isArray(suggestions)) {
+        if (typeof suggestions === 'string') {
+          // If it's a string, try to split it or wrap it in an array
+          suggestions = suggestions.includes('\n') ? suggestions.split('\n').filter(s => s.trim()) : [suggestions];
+        } else {
+          suggestions = [];
+        }
+      }
+      
+      // Clean up suggestions (remove empty strings, trim whitespace)
+      suggestions = suggestions
+        .map((s: any) => typeof s === 'string' ? s.trim() : String(s).trim())
+        .filter((s: string) => s.length > 0);
+      
+      const processedResult: ConversationResponse = {
+        feedback: result.feedback || result.analysis || result.message || 'Analysis completed',
+        suggestions: suggestions
+      };
+      
+      // If no suggestions were provided, generate some generic ones based on common themes
+      if (processedResult.suggestions.length === 0) {
+        const genericSuggestions = [
+          "Take a few deep breaths and reflect on this moment",
+          "Consider journaling about this experience again tomorrow",
+          "Share your thoughts with someone you trust",
+          "Practice gratitude for the insights you've gained"
+        ];
+        processedResult.suggestions = genericSuggestions.slice(0, 2); // Show 2 generic suggestions
+      }
+      
+      console.log('Final processed suggestions:', processedResult.suggestions);
+      console.log('Final processed feedback:', processedResult.feedback);
+      setAnalysisResult(processedResult);
+      setLastAnalyzed(new Date());
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       Alert.alert('Error', `Failed to analyze journal: ${errorMessage}`);
@@ -345,8 +390,14 @@ export default function ViewJournal() {
           <View style={[styles.analysisSection, { backgroundColor: journalData.backgroundColor, borderRadius: 16, marginHorizontal: 16, paddingHorizontal: 24, paddingVertical: 20 }]}>
             <View style={styles.analysisTitleRow}>
               <Text style={styles.sectionTitle}>Mood Booster:</Text>
-              <TouchableOpacity style={styles.refreshButton} onPress={() => analyzeJournal(journalText)} disabled={isAnalyzing}>
-                <Text style={styles.refreshButtonText}>{isAnalyzing ? 'Analyzing...' : 'Refresh'}</Text>
+              <TouchableOpacity 
+                style={[styles.refreshButton, isAnalyzing && styles.refreshButtonDisabled]} 
+                onPress={() => analyzeJournal(journalText)} 
+                disabled={isAnalyzing}
+              >
+                <Text style={styles.refreshButtonText}>
+                  {isAnalyzing ? '🔄 Analyzing...' : '🔄 Refresh'}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -356,11 +407,21 @@ export default function ViewJournal() {
               <View style={styles.analysisContent}>
                 <Text style={styles.analysisText}>{analysisResult.feedback}</Text>
 
-                {analysisResult.suggestions.length > 0 && (
+                {analysisResult.suggestions && analysisResult.suggestions.length > 0 && (
                   <View style={styles.suggestionsContainer}>
-                    <Text style={styles.suggestionsTitle}>Suggestions:</Text>
+                    <View style={styles.suggestionsTitleRow}>
+                      <Text style={styles.suggestionsTitle}>Personalized Suggestions:</Text>
+                      {lastAnalyzed && (
+                        <Text style={styles.lastUpdatedText}>
+                          Updated {lastAnalyzed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      )}
+                    </View>
                     {analysisResult.suggestions.map((suggestion: string, i: number) => (
-                      <Text key={i} style={styles.suggestionText}>• {suggestion}</Text>
+                      <View key={i} style={styles.suggestionItem}>
+                        <Text style={styles.suggestionBullet}>💡</Text>
+                        <Text style={styles.suggestionText}>{suggestion}</Text>
+                      </View>
                     ))}
                   </View>
                 )}
@@ -645,6 +706,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#6725C9',
     borderRadius: 12,
   },
+  refreshButtonDisabled: {
+    backgroundColor: '#B8B8B8',
+  },
   refreshButtonText: {
     fontSize: 12,
     fontFamily: 'Poppins-SemiBold',
@@ -784,18 +848,39 @@ const styles = StyleSheet.create({
   suggestionsContainer: {
     marginTop: 12,
   },
+  suggestionsTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   suggestionsTitle: {
     fontSize: 13,
     fontFamily: 'Poppins-SemiBold',
     color: '#333',
+  },
+  lastUpdatedText: {
+    fontSize: 10,
+    fontFamily: 'Poppins-Regular',
+    color: '#999',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     marginBottom: 6,
+    paddingHorizontal: 4,
+  },
+  suggestionBullet: {
+    fontSize: 12,
+    marginRight: 8,
+    marginTop: 1,
   },
   suggestionText: {
     fontSize: 12,
     fontFamily: 'Poppins-Regular',
     color: '#666',
     lineHeight: 16,
-    marginBottom: 2,
+    flex: 1,
   },
   scoresContainer: {
     flexDirection: 'row',

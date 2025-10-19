@@ -11,13 +11,15 @@ interface WriteJournalEntryProps {
   onClose?: () => void;
   suggestionType?: string;
   suggestionTitle?: string;
+  onEntryAdded?: () => void;
 }
 
-export default function WriteJournalEntry({ onClose, suggestionType, suggestionTitle }: WriteJournalEntryProps) {
+export default function WriteJournalEntry({ onClose, suggestionType, suggestionTitle, onEntryAdded }: WriteJournalEntryProps) {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [moodEmoji, setMoodEmoji] = useState('🙂');
+  const [currentDate] = useState(new Date());
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -312,6 +314,12 @@ export default function WriteJournalEntry({ onClose, suggestionType, suggestionT
       }
 
       Alert.alert('Success', 'Journal entry uploaded successfully!');
+      
+      // Call the onEntryAdded callback to refresh the journal list
+      if (typeof onEntryAdded === 'function') {
+        onEntryAdded();
+      }
+      
       try {
         if (typeof onClose === 'function') {
           // call provided onClose callback
@@ -421,10 +429,14 @@ export default function WriteJournalEntry({ onClose, suggestionType, suggestionT
         <View style={[styles.journalCard, { backgroundColor: '#E8F0F5' }]}>
           <View style={styles.journalHeader}>
             <View style={styles.dateContainer}>
-              <Text style={styles.dateNumber}>17</Text>
+              <Text style={styles.dateNumber}>{currentDate.getDate()}</Text>
               <View style={styles.dateDetails}>
-                <Text style={styles.month}>OCTOBER 2025</Text>
-                <Text style={styles.time}>2:08 AM</Text>
+                <Text style={styles.month}>
+                  {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()}
+                </Text>
+                <Text style={styles.time}>
+                  {currentDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                </Text>
               </View>
             </View>
             <View style={styles.topActionsContainer}>

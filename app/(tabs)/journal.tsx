@@ -1,7 +1,8 @@
 import FloatingActionMenu from '@/components/floating-action-menu';
-import { useRouter } from 'expo-router';
+import { JournalEntry, JournalService } from '@/services/journal-service';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { BookOpen, Clock, Plus } from 'lucide-react-native';
-import { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Animated, Dimensions, FlatList, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const screenWidth = Dimensions.get('window').width;
@@ -9,36 +10,51 @@ const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 const generateDates = (startDate: Date, count: number, startIndex: number = 0) => {
   const dates = [];
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thr', 'Fri', 'Sat'];
-  
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const today = new Date();
+  const todayDateString = today.toDateString();
+
   for (let i = 0; i < count; i++) {
     const date = new Date(startDate);
-    date.setDate(startDate.getDate() + i);
+    date.setDate(startDate.getDate() - i); // Go backwards instead of forward
     const uniqueId = startIndex + i;
     dates.push({
       id: `date-${uniqueId}-${date.getTime()}`,
       day: dayNames[date.getDay()],
       date: date.getDate(),
-      isActive: uniqueId === 2, // Make the third item active
+      isActive: date.toDateString() === todayDateString, // Make today's date active
     });
   }
-  return dates;
+  // Reverse the array so most recent date appears on the right
+  return dates.reverse();
 };
 
 export default function JournalPage() {
   const router = useRouter();
-  const [dates, setDates] = useState(generateDates(new Date(2024, 9, 15), 20));
+  const [dates, setDates] = useState(generateDates(new Date(), 20));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [carouselData, setCarouselData] = useState<JournalEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMoreDates, setIsLoadingMoreDates] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const carouselRef = useRef<FlatList>(null);
 
-  const loadMoreDates = () => {
-    const lastDate = new Date(2024, 9, 15);
-    lastDate.setDate(15 + dates.length);
+  const loadMoreDates = useCallback(() => {
+    if (isLoadingMoreDates) return; // Prevent multiple simultaneous loads
+
+    setIsLoadingMoreDates(true);
+    const today = new Date();
+    const lastDate = new Date(today);
+    lastDate.setDate(today.getDate() - dates.length); // Continue going backwards
     const newDates = generateDates(lastDate, 10, dates.length);
-    setDates([...dates, ...newDates]);
-  };
+    // Prepend new dates to the beginning since we're going backwards in time
+    setDates(prevDates => [...newDates, ...prevDates]);
+
+    setTimeout(() => {
+      setIsLoadingMoreDates(false);
+    }, 500); // Prevent rapid loading
+  }, [dates.length, isLoadingMoreDates]);
 
   const renderDateItem = ({ item }: { item: any }) => (
     <View style={[styles.dayItem, item.isActive && styles.activeDayItem]}>
@@ -47,64 +63,46 @@ export default function JournalPage() {
     </View>
   );
 
-  const carouselData = [
-  { 
-    id: '1', 
-    title: 'Afternoon Walk Journal', 
-    date: 'Saturday, Oct 18, 2025', 
-    backgroundColor: '#A8B5A8',
-    text: 'A calm walk through the park helped me slow down and reconnect with the present moment.'
-  },
-  { 
-    id: '2', 
-    title: 'Morning Reflection', 
-    date: 'Friday, Oct 17, 2025', 
-    backgroundColor: '#B8A8B5',
-    text: 'Started the day with gratitude and a cup of tea — small rituals, big impact.'
-  },
-  { 
-    id: '3', 
-    title: 'Evening Thoughts', 
-    date: 'Thursday, Oct 16, 2025', 
-    backgroundColor: '#A8B8B5',
-    text: 'The sunset reminded me that endings can be peaceful too.'
-  },
-  { 
-    id: '4', 
-    title: 'Mindful Monday', 
-    date: 'Monday, Oct 13, 2025', 
-    backgroundColor: '#B8A8B5',
-    text: 'Focused on breathing between meetings — it made the whole day feel lighter.'
-  },
-  { 
-    id: '5', 
-    title: 'Wellness Wednesday', 
-    date: 'Wednesday, Oct 15, 2025', 
-    backgroundColor: '#A8B5A8',
-    text: 'Took time to stretch and hydrate — simple actions that fueled my energy.'
-  },
-  { 
-    id: '6', 
-    title: 'Gratitude Journal', 
-    date: 'Tuesday, Oct 14, 2025', 
-    backgroundColor: '#B8A8B5',
-    text: 'Listed three things I was thankful for — and felt my mood lift instantly.'
-  },
-  { 
-    id: '7', 
-    title: 'Self-Care Sunday', 
-    date: 'Sunday, Oct 12, 2025', 
-    backgroundColor: '#A8B5A8',
-    text: 'Unplugged for a few hours to read and rest — it felt like a quiet reset.'
-  },
-  { 
-    id: '8', 
-    title: 'Focus Friday', 
-    date: 'Friday, Oct 10, 2025', 
-    backgroundColor: '#B8A8B5',
-    text: 'Tuned out distractions and worked deeply — a satisfying end to the week.'
-  },
-];
+  // Load journal entries from API
+  const loadJournalEntries = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const entries = await JournalService.fetchJournalEntries();
+      setCarouselData(entries);
+    } catch (error) {
+      console.error('Failed to load journal entries:', error);
+      // Keep existing data or show empty state
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Load entries when component mounts or comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadJournalEntries();
+    }, [loadJournalEntries])
+  );
+
+  // Scroll to the end (most recent date) when dates are loaded
+  React.useEffect(() => {
+    if (dates.length > 0 && flatListRef.current) {
+      // Small delay to ensure the FlatList is rendered
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: false });
+      }, 100);
+    }
+  }, [dates.length]);
+
+  // Scroll journal carousel to the end (most recent entry) when data is loaded
+  React.useEffect(() => {
+    if (carouselData.length > 0 && carouselRef.current) {
+      // Small delay to ensure the FlatList is rendered
+      setTimeout(() => {
+        carouselRef.current?.scrollToEnd({ animated: false });
+      }, 200);
+    }
+  }, [carouselData.length]);
 
 
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -192,7 +190,7 @@ export default function JournalPage() {
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.pageTitle}>Journal</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.headerAddButton}
             onPress={() => router.push('/write-journal' as any)}
           >
@@ -214,13 +212,13 @@ export default function JournalPage() {
             <BookOpen size={16} color="#B8A8B5" />
             <Text style={styles.statText}>14</Text>
           </View>
-          <TouchableOpacity 
+          {/* <TouchableOpacity 
             style={[styles.statItem, styles.addButton]}
             onPress={() => router.push('/write-journal' as any)}
           >
             <Plus color="#FFFFFF" size={16} />
             <Text style={[styles.statText, { color: '#FFFFFF' }]}>New</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         <FlatList
@@ -232,36 +230,55 @@ export default function JournalPage() {
           showsHorizontalScrollIndicator={false}
           style={styles.calendarContainer}
           contentContainerStyle={styles.calendarContent}
-          onEndReached={loadMoreDates}
-          onEndReachedThreshold={0.5}
+          onScroll={(event) => {
+            const { contentOffset } = event.nativeEvent;
+            // Load more dates when scrolling near the beginning (left side)
+            if (contentOffset.x < 100 && !isLoadingMoreDates) {
+              loadMoreDates();
+            }
+          }}
+          scrollEventThrottle={400}
         />
 
         <View style={styles.carouselContainer}>
-          <AnimatedFlatList
-            ref={carouselRef}
-            data={carouselData}
-            renderItem={renderCarouselItem}
-            keyExtractor={(item: any) => item.id}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={screenWidth - 52}
-            decelerationRate="fast"
-            onScroll={onCarouselScroll}
-            scrollEventThrottle={16}
-            contentContainerStyle={styles.carouselContent}
-          />
-          <View style={styles.paginationDots}>
-            {carouselData.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.dot,
-                  index === carouselIndex && styles.activeDot,
-                ]}
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading your journal entries...</Text>
+            </View>
+          ) : carouselData.length > 0 ? (
+            <>
+              <AnimatedFlatList
+                ref={carouselRef}
+                data={carouselData}
+                renderItem={renderCarouselItem}
+                keyExtractor={(item) => (item as JournalEntry).id}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={screenWidth - 52}
+                decelerationRate="fast"
+                onScroll={onCarouselScroll}
+                scrollEventThrottle={16}
+                contentContainerStyle={styles.carouselContent}
               />
-            ))}
-          </View>
+              <View style={styles.paginationDots}>
+                {carouselData.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.dot,
+                      index === carouselIndex && styles.activeDot,
+                    ]}
+                  />
+                ))}
+              </View>
+            </>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No journal entries yet</Text>
+              <Text style={styles.emptySubtext}>Start writing to see your entries here</Text>
+            </View>
+          )}
         </View>
 
         <Text style={styles.suggestionsTitle}>Suggestions</Text>
@@ -273,11 +290,11 @@ export default function JournalPage() {
               style={styles.suggestionImage}
             />
             <Text style={styles.suggestionDescription}>Write about your day</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.startButton}
               onPress={() => router.push({
                 pathname: '/write-journal',
-                params: { 
+                params: {
                   suggestionType: 'daily',
                   suggestionTitle: 'Write about your day'
                 }
@@ -293,11 +310,11 @@ export default function JournalPage() {
               style={styles.suggestionImage}
             />
             <Text style={styles.suggestionDescription}>What makes you happy?</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.startButton}
               onPress={() => router.push({
                 pathname: '/write-journal',
-                params: { 
+                params: {
                   suggestionType: 'happiness',
                   suggestionTitle: 'What makes you happy?'
                 }
@@ -307,10 +324,10 @@ export default function JournalPage() {
             </TouchableOpacity>
           </View>
         </View>
-        
+
         <View style={{ height: 80 }} />
       </ScrollView>
-      
+
       {/* Journal editor moved to a dedicated page at /write-journal */}
       <FloatingActionMenu />
     </SafeAreaView>
@@ -593,6 +610,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Poppins-SemiBold',
     color: '#FFFFFF',
+  },
+  loadingContainer: {
+    height: 240,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: '#8B8B8B',
+    textAlign: 'center',
+  },
+  emptyContainer: {
+    height: 240,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontFamily: 'Poppins-Medium',
+    color: '#4A4A4A',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#8B8B8B',
+    textAlign: 'center',
   },
 });
 

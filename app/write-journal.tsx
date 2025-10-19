@@ -1,10 +1,14 @@
 import WriteJournalEntry from '@/components/write-journal-entry';
-import { useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
+import React from 'react';
 
 export default function WriteJournalPage() {
-  const params = useLocalSearchParams();
-  const suggestionType = params.suggestionType as string | undefined;
-  const suggestionTitle = params.suggestionTitle as string | undefined;
-  
-  return <WriteJournalEntry suggestionType={suggestionType} suggestionTitle={suggestionTitle} />;
+  const router = useRouter();
+
+  const handleEntryAdded = () => {
+    // The journal page will automatically refresh when we navigate back
+    // due to the useFocusEffect hook
+  };
+
+  return <WriteJournalEntry onEntryAdded={handleEntryAdded} />;
 }
