@@ -6,7 +6,7 @@ import { useExploreState, type Article } from '@/hooks/use-explore-state';
 import * as Haptics from 'expo-haptics';
 import { Bell, Heart, RotateCcw, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Dimensions, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Linking, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolate,
@@ -77,6 +77,15 @@ export default function ExploreScreen() {
 
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowTagSelection(true);
+            }}
+          >
+            <Text style={styles.backButtonText}>← Topics ({selectedTags.length})</Text>
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>
             Explore
           </Text>
@@ -89,7 +98,7 @@ export default function ExploreScreen() {
         <View style={styles.cardContainer}>
           {isLoading ? (
             <LoadingSkeleton />
-          ) : hasMoreArticles ? (
+          ) : hasMoreArticles && currentArticles.length > 0 ? (
             currentArticles.map((article, index) => (
               <SwipeCard
                 key={article.id}
@@ -125,7 +134,7 @@ function TagSelectionScreen({ selectedTags, onToggleTag, onContinue, colorScheme
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      
+
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Explore</Text>
         <TouchableOpacity style={styles.bellIcon}>
@@ -272,6 +281,20 @@ function SwipeCard({ article, index, isTop, onSwipe, colorScheme }: {
     onSwipe(direction);
   };
 
+  const handleCardPress = async () => {
+    if (!isTop || !article.url) return;
+
+    try {
+      const supported = await Linking.canOpenURL(article.url);
+      if (supported) {
+        await Linking.openURL(article.url);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch (error) {
+      console.error('Error opening URL:', error);
+    }
+  };
+
   return (
     <PanGestureHandler
       onGestureEvent={onGestureEvent}
@@ -280,10 +303,18 @@ function SwipeCard({ article, index, isTop, onSwipe, colorScheme }: {
       <Animated.View style={[styles.card, animatedStyle]}>
         <View style={[styles.cardContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
           <View style={styles.cardImage}>
-            <Text style={styles.imagePlaceholder}>📰</Text>
+            {article.imageUrl ? (
+              <Image
+                source={{ uri: article.imageUrl }}
+                style={styles.articleImage}
+                defaultSource={require('@/assets/images/react-logo.png')}
+              />
+            ) : (
+              <Text style={styles.imagePlaceholder}>📰</Text>
+            )}
           </View>
 
-          <View style={styles.cardInfo}>
+          <TouchableOpacity style={styles.cardInfo} onPress={handleCardPress} activeOpacity={0.7}>
             <View style={[styles.categoryBadge, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}>
               <Text style={styles.categoryText}>{article.category}</Text>
             </View>
@@ -292,16 +323,30 @@ function SwipeCard({ article, index, isTop, onSwipe, colorScheme }: {
               {article.title}
             </Text>
 
-            <Text style={[styles.cardDescription, { color: Colors[colorScheme ?? 'light'].icon }]} numberOfLines={3}>
-              {article.description}
+            <Text style={[styles.cardSummary, { color: Colors[colorScheme ?? 'light'].icon }]} numberOfLines={3}>
+              {article.summary || article.description}
             </Text>
+
+            {article.keyPoints && article.keyPoints.length > 0 && (
+              <View style={styles.keyPointsContainer}>
+                <Text style={[styles.keyPointsTitle, { color: Colors[colorScheme ?? 'light'].text }]}>Key Points:</Text>
+                {article.keyPoints.slice(0, 2).map((point, index) => (
+                  <Text key={index} style={[styles.keyPoint, { color: Colors[colorScheme ?? 'light'].icon }]} numberOfLines={2}>
+                    • {point}
+                  </Text>
+                ))}
+              </View>
+            )}
 
             <View style={styles.cardMeta}>
               <Text style={[styles.cardSource, { color: Colors[colorScheme ?? 'light'].icon }]}>
-                {article.source} • {article.publishDate}
+                {article.authors?.[0] || article.source} • {article.publishDate}
+              </Text>
+              <Text style={[styles.tapHint, { color: Colors[colorScheme ?? 'light'].icon }]}>
+                Tap to read full article
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {isTop && (
             <View style={styles.actionButtons}>
@@ -330,18 +375,31 @@ function TrendingSection({ topics, colorScheme }: {
   topics: string[];
   colorScheme: ReturnType<typeof useColorScheme>;
 }) {
+  // Format topics for better display
+  const formatTopic = (topic: string) => {
+    return topic
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   return (
     <View style={[styles.trendingContainer, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
       <Text style={[styles.trendingTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-        Trending Topics You're Reading
+        🔥 Trending Topics You're Reading
       </Text>
       <View style={styles.trendingTags}>
-        {topics.map((topic, index) => (
+        {topics.slice(0, 5).map((topic, index) => (
           <View key={`${topic}-${index}`} style={[styles.trendingTag, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}>
-            <Text style={styles.trendingTagText}>{topic}</Text>
+            <Text style={styles.trendingTagText}>{formatTopic(topic)}</Text>
           </View>
         ))}
       </View>
+      {topics.length === 0 && (
+        <Text style={[styles.noTrendingText, { color: Colors[colorScheme ?? 'light'].icon }]}>
+          Swipe right on articles to see trending topics!
+        </Text>
+      )}
     </View>
   );
 }
@@ -460,6 +518,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  backButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F0F0F0',
+  },
+  backButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#666',
+  },
   cardContainer: {
     flex: 1,
     alignItems: 'center',
@@ -494,6 +564,11 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     fontSize: 48,
   },
+  articleImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
   cardInfo: {
     flex: 1,
     padding: 20,
@@ -520,12 +595,29 @@ const styles = StyleSheet.create({
     color: '#1E1E1E',
     fontFamily: 'Poppins-Bold',
   },
-  cardDescription: {
+  cardSummary: {
     fontSize: 15,
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: 12,
     color: '#666',
     fontFamily: 'Poppins-Regular',
+  },
+  keyPointsContainer: {
+    marginBottom: 12,
+  },
+  keyPointsTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#1E1E1E',
+    marginBottom: 6,
+  },
+  keyPoint: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#666',
+    fontFamily: 'Poppins-Regular',
+    marginBottom: 3,
   },
   cardMeta: {
     marginTop: 'auto',
@@ -533,6 +625,12 @@ const styles = StyleSheet.create({
   cardSource: {
     fontSize: 13,
     color: '#999',
+    fontFamily: 'Poppins-Regular',
+  },
+  tapHint: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 4,
     fontFamily: 'Poppins-Regular',
   },
   actionButtons: {
@@ -589,6 +687,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     fontFamily: 'Poppins-Medium',
+  },
+  noTrendingText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 8,
+    fontFamily: 'Poppins-Regular',
   },
   emptyState: {
     alignItems: 'center',
