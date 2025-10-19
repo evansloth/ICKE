@@ -5,11 +5,15 @@ import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface ConversationResponse {
-  counselor: {
-    feedback: string;
-    suggestions: string[];
-  };
-  sentiment: string;
+  feedback: string;
+  suggestions: string[];
+}
+
+interface ChatMessage {
+  id: string;
+  text: string;
+  isUser: boolean;
+  timestamp: Date;
 }
 
 export default function ViewJournal() {
@@ -20,7 +24,7 @@ export default function ViewJournal() {
   const [analysisResult, setAnalysisResult] = useState<ConversationResponse | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [chatInput, setChatInput] = useState('');
-  const [chatResponse, setChatResponse] = useState('');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatting, setIsChatting] = useState(false);
 
   const CONVERSATION_API_URL = 'https://fmkrb4vex3.execute-api.us-east-1.amazonaws.com/conversation';
@@ -60,25 +64,50 @@ export default function ViewJournal() {
   // ------------------------------
   const sendChatMessage = async () => {
     if (!chatInput.trim()) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      text: chatInput.trim(),
+      isUser: true,
+      timestamp: new Date()
+    };
+
+    // Add user message immediately
+    setChatMessages(prev => [...prev, userMessage]);
+    const currentInput = chatInput.trim();
+    setChatInput('');
     setIsChatting(true);
 
     try {
       const response = await fetch(CONVERSATION_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ journal: chatInput }),
+        body: JSON.stringify({ journal: currentInput }),
       });
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const result: ConversationResponse = await response.json();
-      setChatResponse(result.counselor.feedback || 'I understand how you feel. Would you like to talk more about it?');
-      setChatInput('');
+
+      const botMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        text: result.feedback || 'I understand how you feel. Would you like to talk more about it?',
+        isUser: false,
+        timestamp: new Date()
+      };
+
+      setChatMessages(prev => [...prev, botMessage]);
     } catch (error) {
       Alert.alert('Error', 'Failed to send message. Please try again.');
+      // Remove the user message if the request failed
+      setChatMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
     } finally {
       setIsChatting(false);
     }
+  };
+
+  const clearChat = () => {
+    setChatMessages([]);
   };
 
   useEffect(() => {
@@ -131,16 +160,12 @@ export default function ViewJournal() {
               <Text style={styles.loadingText}>⏳ Analyzing your journal...</Text>
             ) : analysisResult ? (
               <View style={styles.analysisContent}>
-                <Text style={styles.analysisText}>{analysisResult.counselor.feedback}</Text>
+                <Text style={styles.analysisText}>{analysisResult.feedback}</Text>
 
-                <View style={styles.moodAnalysis}>
-                  <Text style={styles.moodLabel}>Sentiment: {analysisResult.sentiment}</Text>
-                </View>
-
-                {analysisResult.counselor.suggestions.length > 0 && (
+                {analysisResult.suggestions.length > 0 && (
                   <View style={styles.suggestionsContainer}>
                     <Text style={styles.suggestionsTitle}>Suggestions:</Text>
-                    {analysisResult.counselor.suggestions.map((suggestion: string, i: number) => (
+                    {analysisResult.suggestions.map((suggestion: string, i: number) => (
                       <Text key={i} style={styles.suggestionText}>• {suggestion}</Text>
                     ))}
                   </View>
@@ -153,15 +178,39 @@ export default function ViewJournal() {
         </View>
 
         {/* Chat Section */}
-        <Text style={styles.chatPrompt}>Need a chat?</Text>
-        {chatResponse ? (
-          <View style={styles.chatResponseContainer}>
-            <Text style={styles.chatResponseText}>{chatResponse}</Text>
-            <TouchableOpacity style={styles.newChatButton} onPress={() => setChatResponse('')}>
-              <Text style={styles.newChatButtonText}>Ask something else</Text>
-            </TouchableOpacity>
+        <View style={styles.chatSection}>
+          <View style={styles.chatHeader}>
+            <Text style={styles.chatPrompt}>Need a chat?</Text>
+            {chatMessages.length > 0 && (
+              <TouchableOpacity style={styles.clearChatButton} onPress={clearChat}>
+                <Text style={styles.clearChatButtonText}>Clear</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        ) : (
+
+          {/* Chat Messages */}
+          {chatMessages.length > 0 && (
+            <View style={styles.chatMessagesContainer}>
+              {chatMessages.map((message) => (
+                <View
+                  key={message.id}
+                  style={[
+                    styles.messageContainer,
+                    message.isUser ? styles.userMessageContainer : styles.botMessageContainer
+                  ]}
+                >
+                  <Text style={[
+                    styles.messageText,
+                    message.isUser ? styles.userMessageText : styles.botMessageText
+                  ]}>
+                    {message.text}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Chat Input */}
           <View style={styles.inputContainer}>
             <View style={styles.textInputContainer}>
               <TextInput
@@ -182,7 +231,7 @@ export default function ViewJournal() {
               {isChatting ? <Text style={styles.loadingEmoji}>⏳</Text> : <Send size={20} color="#1D1D1D" />}
             </TouchableOpacity>
           </View>
-        )}
+        </View>
       </ScrollView>
     </LinearGradient>
   );
@@ -317,19 +366,76 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-SemiBold',
     color: '#FFFFFF',
   },
+  chatSection: {
+    marginTop: 40,
+    marginHorizontal: 20,
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   chatPrompt: {
     fontSize: 16,
     fontFamily: 'Poppins-Bold',
     color: '#000',
-    textAlign: 'center',
-    marginTop: 40,
+  },
+  clearChatButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#FF6B6B',
+    borderRadius: 12,
+  },
+  clearChatButtonText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+  },
+  chatMessagesContainer: {
+    maxHeight: 300,
+    marginBottom: 20,
+  },
+  messageContainer: {
+    marginBottom: 12,
+    maxWidth: '80%',
+  },
+  userMessageContainer: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#6725C9',
+    borderRadius: 16,
+    borderBottomRightRadius: 4,
+    padding: 12,
+  },
+  botMessageContainer: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderBottomLeftRadius: 4,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  messageText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    lineHeight: 20,
+  },
+  userMessageText: {
+    color: '#FFFFFF',
+  },
+  botMessageText: {
+    color: '#333',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 20,
-    marginTop: 20,
     gap: 12,
   },
   textInputContainer: {
