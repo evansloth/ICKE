@@ -5,23 +5,7 @@ import { Clock, Play, Target, TrendingUp, Zap } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Alert, Animated, Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-interface WorkoutSession {
-  id: string;
-  date: string;
-  duration: number;
-  accuracy: number;
-  exerciseType: string;
-  thumbnail?: string;
-}
-
-interface WorkoutStats {
-  totalSessions: number;
-  averageAccuracy: number;
-  totalDuration: number;
-  bestAccuracy: number;
-  recentSessions: WorkoutSession[];
-}
+import { workoutStorageService, WorkoutSession, WorkoutStats } from '@/services/workout-storage-service';
 
 
 
@@ -64,51 +48,63 @@ export default function WorkoutPage() {
     loadWorkoutData();
   }, []);
 
-  const loadWorkoutData = () => {
-    // In a real app, this would load from AsyncStorage or a database
-    // For now, we'll simulate some data based on recent analyses
-    const mockStats: WorkoutStats = {
-      totalSessions: 12,
-      averageAccuracy: 78.5,
-      totalDuration: 480, // minutes
-      bestAccuracy: 94.2,
-      recentSessions: [
-        {
-          id: '1',
-          date: 'Today',
-          duration: 25,
-          accuracy: 87.3,
-          exerciseType: 'Push-ups',
-        },
-        {
-          id: '2',
-          date: 'Yesterday',
-          duration: 30,
-          accuracy: 82.1,
-          exerciseType: 'Squats',
-        }
-      ]
-    };
-    setWorkoutStats(mockStats);
+  const loadWorkoutData = async () => {
+    try {
+      // Load sessions from AsyncStorage
+      const sessions = await workoutStorageService.loadWorkoutSessions();
+
+      // Calculate statistics from loaded sessions
+      const stats = workoutStorageService.calculateStats(sessions);
+
+      // Update state with calculated statistics
+      setWorkoutStats(stats);
+
+      console.log(`📊 Loaded ${stats.totalSessions} workout sessions`);
+    } catch (error) {
+      console.error('❌ Failed to load workout data:', error);
+
+      // Fallback to empty stats on error
+      setWorkoutStats({
+        totalSessions: 0,
+        averageAccuracy: 0,
+        totalDuration: 0,
+        bestAccuracy: 0,
+        recentSessions: []
+      });
+    }
   };
 
-  const updateWorkoutStats = (newResult: any) => {
-    // Update stats with new analysis result
-    const newSession: WorkoutSession = {
-      id: Date.now().toString(),
-      date: 'Just now',
-      duration: Math.round((newResult.total_frames || 60) / 2), // Estimate duration
-      accuracy: newResult.accuracy || 0,
-      exerciseType: 'Form Analysis',
-    };
+  const updateWorkoutStats = async (newResult: any) => {
+    try {
+      // Create new workout session from analysis result
+      const newSession: WorkoutSession = {
+        id: Date.now().toString(),
+        date: 'Just now',
+        timestamp: Date.now(),
+        duration: Math.round((newResult.total_frames || 60) / 2), // Estimate duration
+        accuracy: newResult.accuracy || 0,
+        exerciseType: 'Form Analysis',
+        totalFrames: newResult.total_frames,
+        goodFrames: newResult.good_frames
+      };
 
-    setWorkoutStats(prev => ({
-      totalSessions: prev.totalSessions + 1,
-      averageAccuracy: ((prev.averageAccuracy * prev.totalSessions) + newResult.accuracy) / (prev.totalSessions + 1),
-      totalDuration: prev.totalDuration + newSession.duration,
-      bestAccuracy: Math.max(prev.bestAccuracy, newResult.accuracy),
-      recentSessions: [newSession, ...prev.recentSessions.slice(0, 4)]
-    }));
+      // Save session to AsyncStorage
+      await workoutStorageService.saveWorkoutSession(newSession);
+
+      // Reload all sessions from storage
+      const sessions = await workoutStorageService.loadWorkoutSessions();
+
+      // Recalculate stats with updated session list
+      const stats = workoutStorageService.calculateStats(sessions);
+
+      // Update state with new statistics
+      setWorkoutStats(stats);
+
+      console.log(`✅ Workout session saved. Total sessions: ${stats.totalSessions}`);
+    } catch (error) {
+      console.error('❌ Failed to save workout session:', error);
+      // Still display the result even if save fails
+    }
 
     setLastAnalysisResult(newResult);
   };
