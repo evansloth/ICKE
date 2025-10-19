@@ -7,12 +7,9 @@ import * as Haptics from 'expo-haptics';
 import { Heart, RotateCcw, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Dimensions, Image, Linking, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
-  interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming
 } from 'react-native-reanimated';
 
@@ -69,53 +66,51 @@ export default function ExploreScreen() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-        <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
 
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowTagSelection(true);
-            }}
-          >
-            <Text style={styles.backButtonText}>← Topics ({selectedTags.length})</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            Explore
-          </Text>
-          <View style={styles.headerSpacer} />
-        </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setShowTagSelection(true);
+          }}
+        >
+          <Text style={styles.backButtonText}>← Topics ({selectedTags.length})</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>
+          Explore
+        </Text>
+        <View style={styles.headerSpacer} />
+      </View>
 
-        {/* Card Stack */}
-        <View style={styles.cardContainer}>
-          {isLoading ? (
-            <LoadingSkeleton />
-          ) : hasMoreArticles && currentArticles.length > 0 ? (
-            currentArticles.map((article, index) => (
-              <SwipeCard
-                key={article.id}
-                article={article}
-                index={index}
-                isTop={index === 0}
-                onSwipe={handleSwipe}
-                colorScheme={colorScheme}
-              />
-            ))
-          ) : (
-            <EmptyState onReset={handleReset} colorScheme={colorScheme} />
-          )}
-        </View>
+      {/* Card Stack */}
+      <View style={styles.cardContainer}>
+        {isLoading ? (
+          <LoadingSkeleton />
+        ) : hasMoreArticles && currentArticles.length > 0 ? (
+          currentArticles.map((article, index) => (
+            <SwipeCard
+              key={article.id}
+              article={article}
+              index={index}
+              isTop={index === 0}
+              onSwipe={handleSwipe}
+              colorScheme={colorScheme}
+            />
+          ))
+        ) : (
+          <EmptyState onReset={handleReset} colorScheme={colorScheme} />
+        )}
+      </View>
 
-        {/* Trending Section */}
-        <TrendingSection topics={trendingTopics} colorScheme={colorScheme} />
+      {/* Trending Section */}
+      <TrendingSection topics={trendingTopics} colorScheme={colorScheme} />
 
-        <FloatingActionMenu />
-      </SafeAreaView>
-    </GestureHandlerRootView>
+      <FloatingActionMenu />
+    </SafeAreaView>
   );
 }
 
@@ -193,64 +188,18 @@ function SwipeCard({ article, index, isTop, onSwipe, colorScheme }: {
   colorScheme: ReturnType<typeof useColorScheme>;
 }) {
   const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const rotate = useSharedValue(0);
   const opacity = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {
-    const rotateZ = interpolate(
-      translateX.value,
-      [-screenWidth / 2, 0, screenWidth / 2],
-      [-15, 0, 15]
-    );
-
     return {
       transform: [
         { translateX: translateX.value },
-        { translateY: translateY.value },
-        { rotateZ: `${rotateZ}deg` },
         { scale: 1 - index * 0.05 }
       ],
       opacity: opacity.value,
       zIndex: 10 - index,
     };
   });
-
-  const panGesture = Gesture.Pan()
-    .onChange((event) => {
-      if (!isTop) return;
-
-      translateX.value = event.translationX;
-      translateY.value = event.translationY;
-      opacity.value = interpolate(
-        Math.abs(event.translationX),
-        [0, screenWidth / 2],
-        [1, 0.7]
-      );
-    })
-    .onEnd((event) => {
-      if (!isTop) return;
-
-      const shouldSwipe = Math.abs(event.translationX) > screenWidth * 0.3;
-
-      if (shouldSwipe) {
-        const direction = event.translationX > 0 ? 'right' : 'left';
-
-        // Add haptic feedback
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-        translateX.value = withTiming(
-          direction === 'right' ? screenWidth : -screenWidth,
-          { duration: 300 }
-        );
-        opacity.value = withTiming(0, { duration: 300 });
-        onSwipe(direction);
-      } else {
-        translateX.value = withSpring(0);
-        translateY.value = withSpring(0);
-        opacity.value = withSpring(1);
-      }
-    });
 
   const handleButtonPress = (direction: 'left' | 'right') => {
     if (!isTop) return;
@@ -281,41 +230,40 @@ function SwipeCard({ article, index, isTop, onSwipe, colorScheme }: {
   };
 
   return (
-    <GestureDetector gesture={panGesture}>
-      <Animated.View style={[styles.card, animatedStyle]}>
-        <View style={styles.cardContent}>
-          {article.imageUrl ? (
-            <Image
-              source={{ uri: article.imageUrl }}
-              style={styles.cardBackgroundImage}
-              defaultSource={require('@/assets/images/react-logo.png')}
-            />
-          ) : (
-            <View style={styles.cardImagePlaceholder}>
-              <Text style={styles.imagePlaceholder}>📰</Text>
+    <Animated.View style={[styles.card, animatedStyle]}>
+      <View style={styles.cardContent}>
+        {article.imageUrl ? (
+          <Image
+            source={{ uri: article.imageUrl }}
+            style={styles.cardBackgroundImage}
+            defaultSource={require('@/assets/images/react-logo.png')}
+          />
+        ) : (
+          <View style={styles.cardImagePlaceholder}>
+            <Text style={styles.imagePlaceholder}>📰</Text>
+          </View>
+        )}
+
+        <View style={styles.cardOverlay}>
+          <TouchableOpacity style={styles.cardInfo} onPress={handleCardPress} activeOpacity={0.9}>
+            <View style={styles.categoryTag}>
+              <Text style={styles.categoryText}>{article.category}</Text>
             </View>
-          )}
 
-          <View style={styles.cardOverlay}>
-            <TouchableOpacity style={styles.cardInfo} onPress={handleCardPress} activeOpacity={1}>
-              <View style={styles.categoryTag}>
-                <Text style={styles.categoryText}>{article.category}</Text>
-              </View>
+            <Text style={styles.cardTitle} numberOfLines={3}>
+              {article.title}
+            </Text>
 
-              <Text style={styles.cardTitle} numberOfLines={3}>
-                {article.title}
+            <Text style={styles.cardSummary} numberOfLines={6}>
+              {article.summary || article.description}
+            </Text>
+
+            <View style={styles.cardMeta}>
+              <Text style={styles.cardSource}>
+                {article.authors?.[0] || article.source}
               </Text>
-
-              <Text style={styles.cardSummary} numberOfLines={6}>
-                {article.summary || article.description}
-              </Text>
-
-              <View style={styles.cardMeta}>
-                <Text style={styles.cardSource}>
-                  {article.authors?.[0] || article.source}
-                </Text>
-              </View>
-            </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
 
             {isTop && (
               <View style={styles.actionButtons}>
@@ -337,8 +285,7 @@ function SwipeCard({ article, index, isTop, onSwipe, colorScheme }: {
           </View>
         </View>
       </Animated.View>
-    </GestureDetector>
-  );
+    );
 }
 
 function TrendingSection({ topics, colorScheme }: {

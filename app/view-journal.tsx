@@ -311,8 +311,9 @@ export default function ViewJournal() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.headerContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#ffffffff" />
+          <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
+            <ArrowLeft size={24} color="#000" />
+          </TouchableOpacity>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Journal</Text>
         </View>

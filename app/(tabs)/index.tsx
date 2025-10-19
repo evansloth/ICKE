@@ -225,13 +225,13 @@ const styles = StyleSheet.create({
   mainSubtitle: {
     fontSize: 16,
     fontFamily: 'Poppins-Regular',
-    color: '#8B8B8B',
+    color: '#A8B5A8',
     lineHeight: 24,
   },
   dateText: {
     fontSize: 14,
     fontFamily: 'Poppins-Regular',
-    color: '#A8A8A8',
+    color: '#A8B5A8',
     marginTop: 4,
   },
   sectionTitle: {

@@ -325,12 +325,12 @@ export default function WriteJournalEntry({ onClose, suggestionType, suggestionT
           // call provided onClose callback
           onClose();
         } else {
-          // fallback to router.back()
-          router.back();
+          // fallback to home page
+          router.push('/');
         }
       } catch (e) {
-        console.warn('onClose handler threw an error, falling back to router.back():', e);
-        try { router.back(); } catch (_) { /* swallow */ }
+        console.warn('onClose handler threw an error, falling back to home page:', e);
+        try { router.push('/'); } catch (_) { /* swallow */ }
       }
     } catch (error) {
       console.error('Error uploading journal entry:', error);
@@ -420,7 +420,7 @@ export default function WriteJournalEntry({ onClose, suggestionType, suggestionT
     >
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
             <ArrowLeft size={24} color="#000" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Journal</Text>

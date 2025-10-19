@@ -244,7 +244,7 @@ export default function HeartRatePage() {
           <Text style={styles.pageTitle}>Heart Rate</Text>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => router.push('/')}
           >
             <ArrowLeft color="#FFFFFF" size={24} />
           </TouchableOpacity>

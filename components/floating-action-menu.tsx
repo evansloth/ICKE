@@ -23,8 +23,19 @@ export default function FloatingActionMenu() {
   };
 
   const navigateTo = (route: string) => {
-    router.push(route as any);
-    toggleMenu();
+    try {
+      router.push(route as any);
+      toggleMenu();
+    } catch (error) {
+      console.warn('Navigation error:', error);
+      // Fallback to replace if push fails
+      try {
+        router.replace(route as any);
+        toggleMenu();
+      } catch (replaceError) {
+        console.error('Both push and replace failed:', replaceError);
+      }
+    }
   };
 
   const menuItems = [

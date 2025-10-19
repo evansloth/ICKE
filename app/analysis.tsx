@@ -1,4 +1,4 @@
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
 import { Dimensions, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -99,7 +99,7 @@ export default function Analysis() {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.darkSection}>
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
               <ArrowLeft color="#FFFFFF" size={24} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Workout Form Analysis</Text>
