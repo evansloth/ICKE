@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Send } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface ConversationResponse {
   feedback: string;
@@ -493,3 +493,453 @@ export default function ViewJournal() {
   );
 }
 
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 30,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 59,
+    paddingHorizontal: 18,
+  },
+  backButton: {
+    marginRight: 12,
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: 'Poppins-Bold',
+    color: '#000',
+  },
+  journalCard: {
+    width: 332,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    alignSelf: 'center',
+    marginTop: 22,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 0, 0, 0.13)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.01,
+    shadowRadius: 4,
+    elevation: 2,
+    paddingBottom: 20,
+  },
+  journalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 22,
+    paddingTop: 12,
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateNumber: {
+    fontSize: 32,
+    fontFamily: 'Poppins-Bold',
+    color: '#000',
+  },
+  dateDetails: {
+    marginLeft: 6,
+  },
+  month: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#6725C9',
+  },
+  time: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#000',
+  },
+  emoji: {
+    fontSize: 24,
+    marginRight: 5,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#D7D7D7',
+    marginHorizontal: 15,
+    marginVertical: 15,
+  },
+  journalContent: {
+    paddingHorizontal: 20,
+  },
+  journalTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Bold',
+    color: '#A7A7A7',
+  },
+  journalTitleText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Bold',
+    color: '#333',
+    flex: 1,
+  },
+  editableTitle: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent',
+  },
+  titleContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  editIndicator: {
+    position: 'absolute',
+    bottom: -2,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    opacity: 0.5,
+  },
+  titleEditContainer: {
+    flex: 1,
+  },
+  titleEditInput: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Bold',
+    color: '#333',
+    borderBottomWidth: 2,
+    borderBottomColor: '#6725C9',
+    paddingVertical: 4,
+    marginBottom: 12,
+    flex: 1,
+  },
+  textEditInput: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Medium',
+    color: '#000',
+    lineHeight: 24,
+    borderWidth: 2,
+    borderColor: '#6725C9',
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 120,
+    marginBottom: 16,
+  },
+  editableText: {
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderRadius: 4,
+    padding: 4,
+    marginLeft: -4,
+  },
+  editButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  saveButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#6725C9',
+    borderRadius: 12,
+    flex: 1,
+    maxWidth: 120,
+  },
+  saveButtonText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  cancelButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 12,
+    flex: 1,
+    maxWidth: 120,
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#666',
+    textAlign: 'center',
+  },
+  editButton: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: '#006AFF',
+  },
+  journalText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Medium',
+    color: '#000',
+    lineHeight: 24,
+  },
+  analysisSection: {
+    paddingHorizontal: 20,
+    paddingTop: 9,
+  },
+  analysisTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  refreshButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#6725C9',
+    borderRadius: 12,
+  },
+  refreshButtonDisabled: {
+    backgroundColor: '#B8B8B8',
+  },
+  refreshButtonText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+  },
+  chatSection: {
+    marginTop: 40,
+    marginHorizontal: 20,
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  chatPrompt: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Bold',
+    color: '#000',
+  },
+  clearChatButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#FF6B6B',
+    borderRadius: 12,
+  },
+  clearChatButtonText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+  },
+  chatMessagesContainer: {
+    maxHeight: 300,
+    marginBottom: 20,
+  },
+  messageContainer: {
+    marginBottom: 12,
+    maxWidth: '80%',
+  },
+  userMessageContainer: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#6725C9',
+    borderRadius: 16,
+    borderBottomRightRadius: 4,
+    padding: 12,
+  },
+  botMessageContainer: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderBottomLeftRadius: 4,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  messageText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    lineHeight: 20,
+  },
+  userMessageText: {
+    color: '#FFFFFF',
+  },
+  botMessageText: {
+    color: '#333',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  textInputContainer: {
+    flex: 1,
+    maxWidth: 280,
+    height: 44,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 26,
+    justifyContent: 'center',
+    paddingHorizontal: 15,
+  },
+  textInput: {
+    fontSize: 13,
+    fontFamily: 'Poppins-Regular',
+    color: '#000',
+  },
+  sendButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
+  },
+  loadingContainer: {
+    marginTop: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#666',
+  },
+  analysisContent: {
+    marginTop: 8,
+  },
+  analysisText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#333',
+    lineHeight: 20,
+  },
+  moodAnalysis: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+  },
+  moodLabel: {
+    fontSize: 13,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#6725C9',
+    marginBottom: 4,
+  },
+  emotionsLabel: {
+    fontSize: 12,
+    fontFamily: 'Poppins-Regular',
+    color: '#666',
+  },
+  suggestionsContainer: {
+    marginTop: 12,
+  },
+  suggestionsTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  suggestionsTitle: {
+    fontSize: 13,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#333',
+  },
+  lastUpdatedText: {
+    fontSize: 10,
+    fontFamily: 'Poppins-Regular',
+    color: '#999',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+    paddingHorizontal: 4,
+  },
+  suggestionBullet: {
+    fontSize: 12,
+    marginRight: 8,
+    marginTop: 1,
+  },
+  suggestionText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-Regular',
+    color: '#666',
+    lineHeight: 16,
+    flex: 1,
+  },
+  scoresContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    gap: 4,
+  },
+  scoreText: {
+    fontSize: 11,
+    fontFamily: 'Poppins-Regular',
+    color: '#666',
+  },
+
+  chatResponseContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  chatResponseText: {
+    fontSize: 15,
+    fontFamily: 'Poppins-Regular',
+    color: '#333',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  newChatButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#6725C9',
+    borderRadius: 20,
+  },
+  newChatButtonText: {
+    fontSize: 13,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+  },
+  loadingEmoji: {
+    fontSize: 16,
+  },
+  testButton: {
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#FF6B6B',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  testButtonText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+  },
+});
