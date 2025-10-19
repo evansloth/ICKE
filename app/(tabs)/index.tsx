@@ -1,6 +1,5 @@
 import FloatingActionMenu from '@/components/floating-action-menu';
-import { SpotifyService } from '@/services/spotify-service';
-import { Bell, Calendar, Clock, ExternalLink, Music, Smile, Star, Trophy } from 'lucide-react-native';
+import { Calendar, Clock, ExternalLink, Music, Star, Trophy } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Image, Linking, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
@@ -45,6 +44,7 @@ export default function DiscoverPage() {
     url: 'https://open.spotify.com/playlist/6EUwvbjPTOYUTyWuuTTvo8'
   });
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
   const currentDate = new Date().toLocaleDateString('en-US', { 
     weekday: 'long', 
@@ -53,59 +53,109 @@ export default function DiscoverPage() {
     day: 'numeric' 
   });
 
-  useEffect(() => {
-    loadPlaylistInfo();
-  }, []);
-
-  const loadPlaylistInfo = async () => {
-    setIsLoadingPlaylist(true);
-    try {
-      const info = await SpotifyService.getPlaylistInfo('6EUwvbjPTOYUTyWuuTTvo8');
-      setPlaylistInfo(info);
-    } catch (error) {
-      console.error('Error loading playlist info:', error);
-      // Keep the default values if API fails
-    } finally {
-      setIsLoadingPlaylist(false);
+  // Wellness cards data
+  const wellnessCards = [
+    {
+      category: 'Mindfulness',
+      title: 'The Power of Morning Meditation',
+      description: 'Start your day with intention and clarity through guided meditation practices.',
+    },
+    {
+      category: 'Nutrition',
+      title: 'Balanced Eating for Better Energy',
+      description: 'Discover how proper nutrition can boost your daily energy levels.',
+    },
+    {
+      category: 'Exercise',
+      title: 'Quick Workouts for Busy Days',
+      description: 'Effective 15-minute routines that fit into any schedule.',
+    },
+    {
+      category: 'Sleep',
+      title: 'Creating the Perfect Sleep Environment',
+      description: 'Tips for optimizing your bedroom for better rest and recovery.',
     }
-  };
+  ];
 
+  
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(100)} style={styles.header}>
-          <View>
-            <Text style={styles.headerTitle}>Hello, Ken! 👋</Text>
-            <Text style={styles.headerSubtitle}>{currentDate}</Text>
-          </View>
-          <TouchableOpacity style={styles.bellIcon}>
-            <Bell color="#2D3748" size={22} />
+          <TouchableOpacity style={styles.menuIcon}>
+            <View style={styles.menuLine} />
+            <View style={styles.menuLine} />
+            <View style={styles.menuLine} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Wellness</Text>
+          <TouchableOpacity style={styles.profileIcon}>
+            <View style={styles.profileCircle} />
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Mood & Feeling Card */}
-        <Animated.View entering={FadeInLeft.delay(200)} style={[styles.card, styles.moodCard]}>
-          <View style={styles.cardHeader}>
-            <Smile color="#48BB78" size={26} />
-            <Text style={styles.cardTitle}>How You're Feeling</Text>
+        {/* Catch-Up Section */}
+        <Animated.View entering={FadeInLeft.delay(200)} style={styles.catchUpSection}>
+          <Text style={styles.catchUpTitle}>Catch-Up</Text>
+          <Text style={styles.catchUpSubtitle}>Your daily wellness insights</Text>
+        </Animated.View>
+
+        {/* Wellness Cards Carousel */}
+        <Animated.View entering={FadeInUp.delay(300)} style={styles.carouselContainer}>
+          <ScrollView 
+            horizontal 
+            pagingEnabled 
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(event) => {
+              const index = Math.round(event.nativeEvent.contentOffset.x / event.nativeEvent.layoutMeasurement.width);
+              setCurrentCardIndex(index);
+            }}
+            style={styles.carousel}
+          >
+            {wellnessCards.map((card, index) => (
+              <Animated.View 
+                key={index}
+                entering={FadeInRight.delay(400 + (index * 100))}
+                style={styles.wellnessCard}
+              >
+                <View style={styles.categoryTag}>
+                  <Text style={styles.categoryText}>{card.category}</Text>
+                </View>
+                <Text style={styles.wellnessTitle}>{card.title}</Text>
+                <TouchableOpacity style={styles.readMoreButton}>
+                  <Text style={styles.readMoreText}>Read more</Text>
+                  <Text style={styles.readMoreArrow}>›</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            ))}
+          </ScrollView>
+          
+          {/* Pagination Dots */}
+          <View style={styles.paginationContainer}>
+            {wellnessCards.map((_, index) => (
+              <View 
+                key={index}
+                style={[
+                  styles.paginationDot,
+                  index === currentCardIndex && styles.paginationDotActive
+                ]}
+              />
+            ))}
           </View>
-          <Text style={styles.moodText}>😊 Happy this week</Text>
-          <Text style={styles.moodSubtext}>Keep up the positive energy!</Text>
         </Animated.View>
 
         {/* Recent Achievements */}
         <Animated.Text entering={FadeInRight.delay(300)} style={styles.sectionTitle}>Recent Achievements</Animated.Text>
         <Animated.View entering={FadeInUp.delay(400)} style={styles.achievementsContainer}>
-          <Animated.View entering={FadeInLeft.delay(500)} style={[styles.achievementCard, { backgroundColor: '#E6FFFA' }]}>
-            <Trophy color="#319795" size={22} />
+          <Animated.View entering={FadeInLeft.delay(500)} style={styles.achievementCard}>
+            <Trophy color="#FFFFFF" size={22} />
             <Text style={styles.achievementTitle}>Academic Excellence</Text>
             <Text style={styles.achievementText}>Got an A in CS 500 level class</Text>
           </Animated.View>
           
-          <Animated.View entering={FadeInRight.delay(600)} style={[styles.achievementCard, { backgroundColor: '#FFFAF0' }]}>
-            <Star color="#D69E2E" size={22} />
+          <Animated.View entering={FadeInRight.delay(600)} style={styles.achievementCard}>
+            <Star color="#FFFFFF" size={22} />
             <Text style={styles.achievementTitle}>Leadership</Text>
             <Text style={styles.achievementText}>Promoted as Club President</Text>
           </Animated.View>
@@ -113,52 +163,45 @@ export default function DiscoverPage() {
 
         {/* Upcoming Events */}
         <Animated.Text entering={FadeInLeft.delay(700)} style={styles.sectionTitle}>Upcoming Events</Animated.Text>
-        <Animated.View entering={FadeInRight.delay(800)} style={[styles.card, styles.eventCard]}>
-          <View style={styles.cardHeader}>
-            <Calendar color="#E53E3E" size={26} />
-            <Text style={styles.cardTitle}>Calendar Reminder</Text>
+        <Animated.View entering={FadeInRight.delay(800)} style={styles.eventCard}>
+          <View style={styles.eventIconContainer}>
+            <Calendar color="#FFFFFF" size={24} />
           </View>
-          <View style={styles.eventDetails}>
-            <Text style={styles.eventTitle}>🍽️ Dinner Celebration</Text>
-            <View style={styles.eventTime}>
-              <Clock color="#718096" size={18} />
-              <Text style={styles.eventTimeText}>Sunday, Oct 19th at 7:00 PM</Text>
-            </View>
+          <Text style={styles.eventTitle}>🍽️ Dinner Celebration</Text>
+          <View style={styles.eventTime}>
+            <Clock color="rgba(255, 255, 255, 0.8)" size={16} />
+            <Text style={styles.eventTimeText}>Sunday, Oct 19th at 7:00 PM</Text>
           </View>
         </Animated.View>
 
         {/* Current Vibe */}
         <Animated.Text entering={FadeInRight.delay(900)} style={styles.sectionTitle}>Current Vibe</Animated.Text>
-        <Animated.View entering={FadeInLeft.delay(1000)} style={[styles.card, styles.vibeCard]}>
+        <Animated.View entering={FadeInLeft.delay(1000)} style={styles.vibeCard}>
           <Text style={styles.vibeText}>✨ "Good feeling about winning this hackathon!"</Text>
           <Text style={styles.vibeSubtext}>Stay confident and keep pushing forward</Text>
         </Animated.View>
 
         {/* Now Playing */}
         <Animated.Text entering={FadeInLeft.delay(1100)} style={styles.sectionTitle}>Now Playing</Animated.Text>
-        <Animated.View entering={FadeInRight.delay(1200)} style={[styles.card, styles.musicCard]}>
-          <View style={styles.cardHeader}>
-            <Music color="#48BB78" size={26} />
-            <Text style={styles.cardTitle}>Featured Playlist</Text>
+        <Animated.View entering={FadeInRight.delay(1200)} style={styles.musicCard}>
+          <View style={styles.musicIconContainer}>
+            <Music color="#FFFFFF" size={24} />
           </View>
           <TouchableOpacity 
             onPress={() => Linking.openURL(playlistInfo.url)}
             style={styles.spotifyContainer}
           >
-            <View style={styles.spotifyContent}>
-              <View style={styles.spotifyInfo}>
-                <Text style={styles.musicTitle}>🎵 {playlistInfo.name}</Text>
-                <Text style={styles.musicArtist}>by {playlistInfo.owner}</Text>
-                <Text style={styles.spotifyDescription}>
-                  {playlistInfo.description}
-                  {playlistInfo.trackCount > 0 && ` • ${playlistInfo.trackCount} tracks`}
-                </Text>
-              </View>
-              <View style={styles.spotifyButton}>
-                <Text style={styles.spotifyButtonText}>
-                  {isLoadingPlaylist ? 'Loading...' : 'Open in Spotify'}
-                </Text>
-              </View>
+            <Text style={styles.musicTitle}>🎵 {playlistInfo.name}</Text>
+            <Text style={styles.musicArtist}>by {playlistInfo.owner}</Text>
+            <Text style={styles.spotifyDescription}>
+              {playlistInfo.description}
+              {playlistInfo.trackCount > 0 && ` • ${playlistInfo.trackCount} tracks`}
+            </Text>
+            <View style={styles.spotifyButton}>
+              <Text style={styles.spotifyButtonText}>
+                {isLoadingPlaylist ? 'Loading...' : 'Open in Spotify'}
+              </Text>
+              <Text style={styles.readMoreArrow}>›</Text>
             </View>
             {playlistInfo.imageUrl && (
               <Image 
@@ -173,15 +216,15 @@ export default function DiscoverPage() {
         {/* Quick Stats */}
         <Animated.Text entering={FadeInRight.delay(1300)} style={styles.sectionTitle}>This Week's Highlights</Animated.Text>
         <Animated.View entering={FadeInUp.delay(1400)} style={styles.statsContainer}>
-          <Animated.View entering={FadeInLeft.delay(1500)} style={[styles.statCard, { backgroundColor: '#F0FFF4' }]}>
+          <Animated.View entering={FadeInLeft.delay(1500)} style={styles.statCard}>
             <Text style={styles.statNumber}>1</Text>
             <Text style={styles.statLabel}>A Grade</Text>
           </Animated.View>
-          <Animated.View entering={FadeInUp.delay(1600)} style={[styles.statCard, { backgroundColor: '#FFFAF0' }]}>
+          <Animated.View entering={FadeInUp.delay(1600)} style={styles.statCard}>
             <Text style={styles.statNumber}>1</Text>
             <Text style={styles.statLabel}>Promotion</Text>
           </Animated.View>
-          <Animated.View entering={FadeInRight.delay(1700)} style={[styles.statCard, { backgroundColor: '#FAF5FF' }]}>
+          <Animated.View entering={FadeInRight.delay(1700)} style={styles.statCard}>
             <Text style={styles.statNumber}>100%</Text>
             <Text style={styles.statLabel}>Confidence</Text>
           </Animated.View>
@@ -193,26 +236,21 @@ export default function DiscoverPage() {
           <Animated.View 
             key={index}
             entering={FadeInRight.delay(1900 + (index * 100))} 
-            style={[styles.card, styles.articleCard]}
+            style={styles.articleCard}
           >
             <TouchableOpacity 
               onPress={() => Linking.openURL(article.url)}
               style={styles.articleTouchable}
             >
-              <View style={styles.articleContent}>
-                <View style={styles.articleTextContent}>
-                  <View style={styles.articleHeader}>
-                    <Text style={styles.articleTitle}>{article.title}</Text>
-                    <ExternalLink color="#718096" size={18} />
-                  </View>
-                  <Text style={styles.articleSource}>{article.source}</Text>
-                  <Text style={styles.articleDescription}>{article.description}</Text>
-                </View>
-                <Image 
-                  source={{ uri: article.thumbnail }} 
-                  style={styles.articleThumbnail}
-                  resizeMode="cover"
-                />
+              <View style={styles.articleHeader}>
+                <Text style={styles.articleTitle}>{article.title}</Text>
+                <ExternalLink color="rgba(255, 255, 255, 0.8)" size={18} />
+              </View>
+              <Text style={styles.articleSource}>{article.source}</Text>
+              <Text style={styles.articleDescription}>{article.description}</Text>
+              <View style={styles.readMoreButton}>
+                <Text style={styles.readMoreText}>Read more</Text>
+                <Text style={styles.readMoreArrow}>›</Text>
               </View>
             </TouchableOpacity>
           </Animated.View>
@@ -228,7 +266,7 @@ export default function DiscoverPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#F5F5F0',
   },
   scrollView: {
     flex: 1,
@@ -239,129 +277,187 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     marginTop: 20,
-    marginBottom: 32,
+    marginBottom: 40,
+  },
+  menuIcon: {
+    width: 24,
+    height: 24,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  menuLine: {
+    width: 20,
+    height: 2,
+    backgroundColor: '#8B8B8B',
+    borderRadius: 1,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
-    color: '#1A202C',
+    fontSize: 24,
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
+    color: '#8B8B8B',
+    letterSpacing: 0.5,
   },
-  headerSubtitle: {
-    fontSize: 15,
-    fontFamily: 'Poppins-Regular',
-    color: '#718096',
-    marginTop: 4,
-  },
-  bellIcon: {
-    width: 44,
-    height: 44,
+  profileIcon: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  sectionTitle: {
-    fontSize: 18,
+  profileCircle: {
+    width: 36,
+    height: 36,
+    backgroundColor: '#B8C5B8',
+    borderRadius: 18,
+  },
+  catchUpSection: {
+    paddingHorizontal: 24,
+    marginBottom: 40,
+  },
+  catchUpTitle: {
+    fontSize: 32,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
-    marginTop: 32,
-    marginBottom: 16,
-    marginLeft: 24,
-    color: '#2D3748',
-  },
-  card: {
-    marginHorizontal: 24,
-    marginBottom: 24,
-    padding: 24,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
-    color: '#2D3748',
-    marginLeft: 12,
-  },
-  moodCard: {
-    backgroundColor: '#F0FFF4',
-    borderColor: '#9AE6B4',
-  },
-  moodText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
-    color: '#22543D',
+    color: '#4A4A4A',
     marginBottom: 8,
   },
-  moodSubtext: {
-    fontSize: 15,
+  catchUpSubtitle: {
+    fontSize: 16,
     fontFamily: 'Poppins-Regular',
-    color: '#38A169',
+    color: '#8B8B8B',
+    lineHeight: 24,
+  },
+  carouselContainer: {
+    marginBottom: 40,
+  },
+  carousel: {
+    paddingLeft: 24,
+  },
+  wellnessCard: {
+    width: 320,
+    height: 400,
+    backgroundColor: '#A8B5A8',
+    borderRadius: 24,
+    padding: 32,
+    marginRight: 16,
+    justifyContent: 'flex-end',
+  },
+  categoryTag: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    marginBottom: 24,
+  },
+  categoryText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Medium',
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  wellnessTitle: {
+    fontSize: 28,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+    lineHeight: 36,
+    marginBottom: 24,
+  },
+  readMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  readMoreText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Medium',
+    color: '#FFFFFF',
+    marginRight: 8,
+  },
+  readMoreArrow: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    fontWeight: '300',
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24,
+    gap: 8,
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D1D5DB',
+  },
+  paginationDotActive: {
+    backgroundColor: '#A8B5A8',
+    width: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    marginTop: 40,
+    marginBottom: 20,
+    marginLeft: 24,
+    color: '#4A4A4A',
   },
   achievementsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 24,
     gap: 16,
-    marginBottom: 8,
+    marginBottom: 20,
   },
   achievementCard: {
     flex: 1,
-    padding: 20,
-    borderRadius: 16,
+    backgroundColor: '#A8B5A8',
+    padding: 24,
+    borderRadius: 20,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    minHeight: 140,
+    justifyContent: 'center',
   },
   achievementTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
-    color: '#2D3748',
+    color: '#FFFFFF',
     marginTop: 12,
-    marginBottom: 6,
+    marginBottom: 8,
     textAlign: 'center',
   },
   achievementText: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'Poppins-Regular',
-    color: '#718096',
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
   },
   eventCard: {
-    backgroundColor: '#FFF5F5',
-    borderColor: '#FEB2B2',
+    backgroundColor: '#A8B5A8',
+    marginHorizontal: 24,
+    marginBottom: 24,
+    padding: 24,
+    borderRadius: 20,
+    minHeight: 160,
   },
-  eventDetails: {
-    marginTop: 8,
+  eventIconContainer: {
+    width: 40,
+    height: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   eventTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
-    color: '#2D3748',
+    fontSize: 22,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
     marginBottom: 12,
   },
   eventTime: {
@@ -369,160 +465,155 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   eventTimeText: {
-    fontSize: 15,
-    fontFamily: 'Poppins-Medium',
-    color: '#718096',
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: 'rgba(255, 255, 255, 0.9)',
     marginLeft: 8,
   },
   vibeCard: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#F6E05E',
+    backgroundColor: '#A8B5A8',
+    marginHorizontal: 24,
+    marginBottom: 24,
+    padding: 24,
+    borderRadius: 20,
+    minHeight: 140,
+    justifyContent: 'center',
   },
   vibeText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
-    color: '#744210',
-    marginBottom: 8,
-    lineHeight: 24,
+    color: '#FFFFFF',
+    marginBottom: 12,
+    lineHeight: 28,
   },
   vibeSubtext: {
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: 'Poppins-Regular',
-    color: '#A0792C',
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   musicCard: {
-    backgroundColor: '#F0FFF4',
-    borderColor: '#9AE6B4',
+    backgroundColor: '#A8B5A8',
+    marginHorizontal: 24,
+    marginBottom: 24,
+    padding: 24,
+    borderRadius: 20,
+    minHeight: 180,
+  },
+  musicIconContainer: {
+    width: 40,
+    height: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   spotifyContainer: {
-    marginTop: 8,
-  },
-  spotifyContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  spotifyInfo: {
     flex: 1,
-    marginRight: 16,
   },
   musicTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
-    color: '#2D3748',
-    marginBottom: 6,
-  },
-  musicArtist: {
-    fontSize: 15,
-    fontFamily: 'Poppins-Regular',
-    color: '#718096',
+    fontSize: 20,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
-  spotifyDescription: {
-    fontSize: 13,
+  musicArtist: {
+    fontSize: 16,
     fontFamily: 'Poppins-Regular',
-    color: '#4A5568',
-    lineHeight: 18,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 12,
+  },
+  spotifyDescription: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: 'rgba(255, 255, 255, 0.9)',
+    lineHeight: 20,
+    marginBottom: 16,
   },
   spotifyButton: {
-    backgroundColor: '#1DB954',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   spotifyButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontFamily: 'Poppins-SemiBold',
-    fontWeight: '600',
+    fontSize: 16,
+    fontFamily: 'Poppins-Medium',
+    marginRight: 8,
   },
   playlistImage: {
     width: 60,
     height: 60,
-    borderRadius: 8,
-    marginTop: 12,
-    alignSelf: 'center',
+    borderRadius: 12,
+    marginTop: 16,
+    alignSelf: 'flex-start',
   },
   statsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 24,
     gap: 16,
-    marginBottom: 8,
+    marginBottom: 20,
   },
   statCard: {
     flex: 1,
+    backgroundColor: '#A8B5A8',
     padding: 20,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    minHeight: 100,
+    justifyContent: 'center',
   },
   statNumber: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
-    color: '#2D3748',
-    marginBottom: 6,
+    fontSize: 24,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+    marginBottom: 8,
   },
   statLabel: {
-    fontSize: 13,
-    fontFamily: 'Poppins-Medium',
-    color: '#718096',
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
   },
   articleCard: {
-    backgroundColor: '#F8FAFC',
-    borderColor: '#CBD5E0',
+    backgroundColor: '#A8B5A8',
+    marginHorizontal: 24,
+    marginBottom: 20,
+    padding: 24,
+    borderRadius: 20,
+    minHeight: 160,
   },
   articleTouchable: {
     flex: 1,
-  },
-  articleContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  articleTextContent: {
-    flex: 1,
-    marginRight: 16,
   },
   articleHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   articleTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
-    color: '#2D3748',
+    color: '#FFFFFF',
     flex: 1,
     marginRight: 12,
-    lineHeight: 22,
+    lineHeight: 24,
   },
   articleSource: {
-    fontSize: 13,
-    fontFamily: 'Poppins-Medium',
-    color: '#718096',
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: 'rgba(255, 255, 255, 0.8)',
     marginBottom: 12,
   },
   articleDescription: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: 'Poppins-Regular',
-    color: '#4A5568',
-    lineHeight: 20,
-  },
-  articleThumbnail: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    backgroundColor: '#E2E8F0',
+    color: 'rgba(255, 255, 255, 0.9)',
+    lineHeight: 22,
+    marginBottom: 16,
   },
 });
