@@ -75,12 +75,7 @@ export default function RootLayout() {
         <Stack.Screen name="analysis" options={{ headerShown: false }} />
         <Stack.Screen
           name="write-journal"
-          options={{
-            headerTitle: '',
-            headerBackTitle: '',
-            headerStyle: { backgroundColor: '#000' },
-            headerTintColor: '#fff',
-          }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen name="view-journal" options={{ headerShown: false }} />
       </Stack>

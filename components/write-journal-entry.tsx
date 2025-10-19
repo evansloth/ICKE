@@ -1,12 +1,11 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as ImagePicker from 'expo-image-picker';
-// legacy FileSystem used for readAsStringAsync (local file URIs)
 import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Camera as CameraIcon, Image as ImageIcon } from 'lucide-react-native';
+import { ArrowLeft, Camera as CameraIcon, Image as ImageIcon } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-// import '/.env';
+import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface WriteJournalEntryProps {
   onClose?: () => void;
@@ -19,16 +18,18 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
   const [moodEmoji, setMoodEmoji] = useState('🙂');
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [cameraVisible, setCameraVisible] = useState(false);
   const cameraRef = React.useRef<any>(null);
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
   const [processError, setProcessError] = useState<string | null>(null);
 
-  // Replace this with your actual API Gateway / Lambda endpoint that runs Textract
   const TEXTRACT_API_URL = 'https://2sxyz7gmc1.execute-api.us-east-1.amazonaws.com/ocr/textract';
   const NLP_API_URL = 'https://3fksn86ahf.execute-api.us-east-1.amazonaws.com/NLP';
+  const DB_API_URL = "https://0q9swf3cmf.execute-api.us-east-1.amazonaws.com/DB";
 
-  async function uploadAndExtractText(uri: string) {
+  async function uploadAndExtractText(uri: string, runNLP: boolean = true) {
     // Use expo-image-manipulator to optionally resize/compress and return base64 for any URI.
     // This avoids relying on FileSystem.readAsStringAsync and handles local file:// URIs.
     const manipResult = await ImageManipulator.manipulateAsync(
@@ -71,10 +72,10 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
     }
 
     // Optional post-processing: send extracted text to an NLP/AI service to clean it up
-    // and double-check for readability/formatting. If `NLP_API_URL` is set, we'll POST
-    // the OCR result and expect a JSON response with a cleaned text field and optionally an emoji.
+    // and double-check for readability/formatting. If `runNLP` is true and `NLP_API_URL` is set,
+    // we'll POST the OCR result and expect a JSON response with a cleaned text field and optionally an emoji.
     let returnedEmoji: string | undefined = undefined;
-    if (ocrText) {
+    if (runNLP && ocrText) {
       try {
         const procRes = await fetch(NLP_API_URL, {
           method: 'POST',
@@ -86,9 +87,20 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
           const procJson = await procRes.json();
           // Accept several possible field names from the NLP service
           const cleaned = procJson.text ?? procJson.cleanedText ?? procJson.processedText ?? '';
-          const emoji = procJson.emoji ?? procJson.sentimentEmoji ?? procJson.emojiChar ?? '';
-          if (emoji) {
-            returnedEmoji = emoji.split("→")[1].trim();
+          const emojiRaw = procJson.emoji ?? procJson.sentimentEmoji ?? procJson.emojiChar ?? '';
+          if (emojiRaw) {
+            // API returns arrow-delimited values like "label → 😊" — use the part after the arrow, or trim the raw string
+            let extractedEmoji = emojiRaw.includes('→') ? emojiRaw.split('→')[1] : emojiRaw;
+            extractedEmoji = extractedEmoji.trim();
+
+            // Additional cleanup: extract only the emoji character
+            const emojiMatch = extractedEmoji.match(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u);
+            if (emojiMatch) {
+              returnedEmoji = emojiMatch[0];
+            } else {
+              // Fallback: just take the first character if it looks like an emoji
+              returnedEmoji = extractedEmoji.charAt(0);
+            }
             console.log(`NLP returned emoji: ${returnedEmoji}`);
           }
           if (cleaned) ocrText = cleaned;
@@ -131,19 +143,19 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
     setProcessError(null);
     setCapturedUri(null);
     setCameraVisible(true);
+
   };
 
-  // Camera modal + processing logic
+  // Process a captured or picked image URI: upload, extract text, update content and emoji
   const processCaptured = async (uri: string) => {
-    setIsProcessing(true);
+    setIsUploadingImage(true);
     setProcessError(null);
     try {
-      const extracted = await uploadAndExtractText(uri);
+      // perform OCR only; skip NLP until user confirms (Done)
+      const extracted = await uploadAndExtractText(uri, false);
       if (extracted && extracted.text) {
         const textToInsert = extracted.text.trim();
         setContent(prevContent => (prevContent ? `${prevContent}\n\n${textToInsert}` : textToInsert));
-        // Update mood emoji if NLP returned one
-        if (extracted.emoji) setMoodEmoji(extracted.emoji);
         Alert.alert('Success', 'Text extracted and added to your journal entry!');
         setCapturedUri(null);
         setCameraVisible(false);
@@ -153,9 +165,8 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
     } catch (err: any) {
       console.error('Error processing captured image', err);
       const message = err?.message ?? String(err);
-      // Provide friendlier guidance for common HTTP errors
       if (message.includes('404')) {
-        Alert.alert('Server error', 'OCR endpoint not found (404). Please check the TEXTRACT_API_URL in components/write-journal-entry.tsx — ensure the full API Gateway URL, stage and resource path are correct.');
+        Alert.alert('Server error', 'OCR endpoint not found (404). Please check the TEXTRACT_API_URL.');
       } else if (message.includes('401') || message.includes('403')) {
         Alert.alert('Authentication error', 'The Textract endpoint rejected the request (401/403). Check API keys / auth headers.');
       } else {
@@ -163,14 +174,14 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
       }
       setProcessError(message);
     } finally {
-      setIsProcessing(false);
+      setIsUploadingImage(false);
     }
   };
 
   const take = async () => {
     if (!cameraRef.current) return;
     try {
-      setIsProcessing(true);
+      setIsUploadingImage(true);
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       if (photo?.uri) {
         setCapturedUri(photo.uri);
@@ -180,13 +191,13 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
       console.error(e);
       setProcessError(String(e));
     } finally {
-      setIsProcessing(false);
+      setIsUploadingImage(false);
     }
   };
 
   const handleOpenImagePicker = async () => {
     try {
-      setIsProcessing(true);
+      setIsUploadingImage(true);
 
       // Check/request media library permission
       const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
@@ -218,11 +229,10 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
       }
 
       try {
-        const extracted = await uploadAndExtractText(uri);
+        const extracted = await uploadAndExtractText(uri, false);
         if (extracted && extracted.text) {
           const textToInsert = extracted.text.trim();
           setContent(prevContent => (prevContent ? `${prevContent}\n\n${textToInsert}` : textToInsert));
-          if (extracted.emoji) setMoodEmoji(extracted.emoji);
           Alert.alert('Success', 'Text extracted and added to your journal entry!');
         } else {
           Alert.alert('No Text Found', 'Could not detect any text in the selected image.');
@@ -235,7 +245,129 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
       console.error('Error selecting image or performing OCR:', error);
       Alert.alert('Error', 'Failed to extract text from the selected image. Please try again.');
     } finally {
-      setIsProcessing(false);
+      setIsUploadingImage(false);
+    }
+  };
+
+  const uploadToDB = async (emoji: any) => {
+    if (!title || !content) {
+      Alert.alert('Error', 'Title and content are required.');
+      return;
+    }
+
+    const now = new Date();
+
+    const formatted = now.toLocaleDateString("en-US", {
+      weekday: "long",   // e.g. "Saturday"
+      year: "numeric",   // e.g. "2025"
+      month: "long",     // e.g. "October"
+      day: "numeric"     // e.g. "18"
+    });
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`${DB_API_URL}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          User_ID: "1",
+          Title: title,
+          Text: content,
+          Date_Added: formatted,
+          Icon: emoji
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('DB API Error:', response.status, errorText);
+        throw new Error(`Failed to upload journal entry: ${response.status} ${errorText}`);
+      }
+
+      Alert.alert('Success', 'Journal entry uploaded successfully!');
+      try {
+        if (typeof onClose === 'function') {
+          // call provided onClose callback
+          onClose();
+        } else {
+          // fallback to router.back()
+          router.back();
+        }
+      } catch (e) {
+        console.warn('onClose handler threw an error, falling back to router.back():', e);
+        try { router.back(); } catch (_) { /* swallow */ }
+      }
+    } catch (error) {
+      console.error('Error uploading journal entry:', error);
+      Alert.alert('Error', 'Failed to upload journal entry. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Run NLP post-processing on the current content, set emoji, and then upload
+  const handleDone = async () => {
+    if (!content) {
+      Alert.alert('Error', 'Please add some content before finishing.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      let returnedEmoji: string | undefined;
+      let cleanedText = content;
+
+      // The API returns emoji info in the form "label → 😊" or raw emoji; take the part after the arrow or trim
+      try {
+        const procRes = await fetch(NLP_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: content }),
+        });
+
+        if (procRes.ok) {
+          const procJson = await procRes.json();
+          console.log('NLP raw response:', procJson);
+          const cleaned = procJson.text ?? procJson.cleanedText ?? procJson.processedText ?? '';
+          const emojiRaw = procJson.emoji ?? procJson.sentimentEmoji ?? procJson.emojiChar ?? '';
+          if (emojiRaw) {
+            // More robust emoji extraction
+            let extractedEmoji = emojiRaw.includes('→') ? emojiRaw.split('→')[1] : emojiRaw;
+            extractedEmoji = extractedEmoji.trim();
+
+            // Additional cleanup: remove any non-emoji characters that might have slipped through
+            // This regex matches most emoji characters
+            const emojiMatch = extractedEmoji.match(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u);
+            if (emojiMatch) {
+              returnedEmoji = emojiMatch[0];
+            } else {
+              // Fallback: just take the first character if it looks like an emoji
+              returnedEmoji = extractedEmoji.charAt(0);
+            }
+            console.log('Parsed returnedEmoji:', returnedEmoji);
+          }
+          if (cleaned) cleanedText = cleaned;
+        } else {
+          const body = await procRes.text();
+          console.warn(`NLP service returned ${procRes.status}: ${body}`);
+        }
+      } catch (e) {
+        console.warn('Error calling NLP post-processing service', e);
+      }
+
+      // Apply NLP results
+      if (cleanedText) setContent(cleanedText);
+      if (returnedEmoji) setMoodEmoji(returnedEmoji);
+
+      // Now upload with the possibly-updated moodEmoji
+      await uploadToDB(returnedEmoji);
+    } catch (error) {
+      console.error('Error in handleDone:', error);
+      Alert.alert('Error', 'Failed to process journal entry. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -243,63 +375,79 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
   // (no external ocr events anymore)
   useEffect(() => {
     // no-op
-    return () => {};
+    return () => { };
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.dateContainer}>
-            <Text style={styles.dayNumber}>17</Text>
-            <Text style={styles.dayName}>Friday</Text>
-            <Text style={styles.mood}>{moodEmoji}</Text>
+    <LinearGradient
+      colors={['#ebead6', '#f9eee9']}
+      start={{ x: 0, y: 1 }}
+      end={{ x: 1, y: 0 }}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <ArrowLeft size={24} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Journal</Text>
+        </View>
+
+        <View style={styles.journalCard}>
+          <View style={styles.journalHeader}>
+            <View style={styles.dateContainer}>
+              <Text style={styles.dateNumber}>17</Text>
+              <View style={styles.dateDetails}>
+                <Text style={styles.month}>OCTOBER 2025</Text>
+                <Text style={styles.time}>2:08 AM</Text>
+              </View>
+            </View>
+            <View style={styles.topActionsContainer}>
+              <Text style={styles.emoji}>{moodEmoji}</Text>
+              <TouchableOpacity style={styles.topActionButton} onPress={handleOpenCamera} activeOpacity={0.7}>
+                <CameraIcon stroke="white" width={16} height={16} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.topActionButton} onPress={handleOpenImagePicker} activeOpacity={0.7}>
+                {isUploadingImage ? <ActivityIndicator size="small" color="#fff" /> : <ImageIcon stroke="white" width={16} height={16} />}
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-        
-        <View style={styles.journalContainer}>
-          <TextInput
-            style={styles.titleInput}
-            placeholder="Title"
-            placeholderTextColor="#d7d7d7"
-            value={title}
-            onChangeText={setTitle}
-          />
-          
+
           <View style={styles.divider} />
-          
-          <TextInput
-            style={styles.contentInput}
-            placeholder="Start writing...."
-            placeholderTextColor="#d7d7d7"
-            multiline
-            textAlignVertical="top"
-            value={content}
-            onChangeText={setContent}
-          />
+
+          <View style={styles.journalContent}>
+            <View style={styles.journalTitleRow}>
+              <TextInput
+                style={styles.titleInput}
+                placeholder="Title"
+                placeholderTextColor="#d7d7d7"
+                value={title}
+                onChangeText={setTitle}
+              />
+              <TouchableOpacity onPress={handleDone} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="#006AFF" />
+                ) : (
+                  <Text style={styles.editButton}>Done</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.journalText}
+              placeholder="Start writing...."
+              placeholderTextColor="#d7d7d7"
+              multiline
+              textAlignVertical="top"
+              value={content}
+              onChangeText={setContent}
+            />
+          </View>
+
+          {/* NLP Analysis removed for write-journal entry */}
         </View>
-        
-        <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity 
-            style={styles.actionButton} 
-            onPress={handleOpenCamera}
-            activeOpacity={0.7}
-          >
-            <CameraIcon stroke="white" width={18} height={18} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonTop]}
-            onPress={handleOpenImagePicker}
-            activeOpacity={0.7}
-          >
-            {isProcessing ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <ImageIcon stroke="white" width={18} height={18} />
-            )}
-          </TouchableOpacity>
-        </View>
+
+        {/* chat input removed for write-journal entry */}
       </ScrollView>
 
       {/* Camera Modal */}
@@ -325,7 +473,7 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
 
             <View style={styles.captureButtonContainer}>
               {capturedUri ? (
-                isProcessing ? (
+                isUploadingImage ? (
                   <ActivityIndicator size="large" color="#fff" />
                 ) : (
                   <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -341,7 +489,7 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
                   </View>
                 )
               ) : (
-                isProcessing ? (
+                isUploadingImage ? (
                   <ActivityIndicator size="large" color="#fff" />
                 ) : (
                   <TouchableOpacity onPress={take} style={styles.captureButton}>
@@ -353,7 +501,7 @@ export default function WriteJournalEntry({ onClose }: WriteJournalEntryProps) {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </LinearGradient>
   );
 }
 
@@ -530,6 +678,154 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     backgroundColor: '#fff',
+  },
+  /* Styles for card-style journal view (copied/adapted from app/view-journal.tsx) */
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 30,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 59,
+    paddingHorizontal: 18,
+  },
+  backButton: {
+    marginRight: 12,
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: 'Poppins-Bold',
+    color: '#000',
+  },
+  journalCard: {
+    width: '92%',
+    height: '80%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    alignSelf: 'center',
+    marginTop: 22,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 0, 0, 0.13)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.01,
+    shadowRadius: 4,
+    elevation: 2,
+    paddingBottom: 8,
+    overflow: 'hidden',
+  },
+  journalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 22,
+    paddingTop: 12,
+  },
+  dateNumber: {
+    fontSize: 32,
+    fontFamily: 'Poppins-Bold',
+    color: '#000',
+  },
+  dateDetails: {
+    marginLeft: 6,
+  },
+  month: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#6725C9',
+  },
+  time: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#000',
+  },
+  emoji: {
+    fontSize: 24,
+    marginRight: 5,
+  },
+  journalContent: {
+    paddingHorizontal: 20,
+    flex: 1,
+  },
+  journalTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Bold',
+    color: '#A7A7A7',
+  },
+  editButton: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: '#006AFF',
+  },
+  journalText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Medium',
+    color: '#000',
+    lineHeight: 24,
+    flex: 1,
+  },
+  analysisSection: {
+    paddingHorizontal: 20,
+    paddingTop: 9,
+  },
+  chatPrompt: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Bold',
+    color: '#000',
+    textAlign: 'center',
+    marginTop: 24,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 20,
+    marginTop: 18,
+    gap: 12,
+  },
+  textInputContainer: {
+    flex: 1,
+    maxWidth: 280,
+    height: 44,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 26,
+    justifyContent: 'center',
+    paddingHorizontal: 15,
+  },
+  textInput: {
+    fontSize: 13,
+    fontFamily: 'Poppins-Regular',
+    color: '#000',
+  },
+  sendButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  topActionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
 });
 
