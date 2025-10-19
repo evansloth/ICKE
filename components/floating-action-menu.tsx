@@ -1,6 +1,6 @@
 import { usePathname, useRouter } from 'expo-router';
-import { BookOpen, CheckCircle, Dumbbell, Home, X, Newspaper } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { BookOpen, CheckCircle, Dumbbell, Heart, Home, Newspaper, X } from 'lucide-react-native';
+import { useState } from 'react';
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function FloatingActionMenu() {
@@ -33,6 +33,7 @@ export default function FloatingActionMenu() {
     { icon: BookOpen, label: 'Journal', route: '/journal' },
     { icon: Dumbbell, label: 'Workout', route: '/workout' },
     { icon: CheckCircle, label: 'Habits', route: '/habits' },
+    { icon: Heart, label: 'Heart Rate', route: '/heartrate' },
   ];
 
   return (
