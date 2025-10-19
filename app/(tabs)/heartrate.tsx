@@ -110,7 +110,7 @@ export default function HeartRatePage() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
-          <Heart color="#E53E3E" size={64} />
+          <Heart color="#A8B5A8" size={64} />
           <Text style={styles.permissionTitle}>Camera Permission Required</Text>
           <Text style={styles.permissionText}>
             We need access to your front camera to measure your heart rate
@@ -241,25 +241,24 @@ export default function HeartRatePage() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerRow}>
+          <Text style={styles.pageTitle}>Heart Rate</Text>
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <ArrowLeft color="#2D3748" size={24} />
+            <ArrowLeft color="#FFFFFF" size={24} />
           </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Heart color="#E53E3E" size={28} />
-            <Text style={styles.headerTitle}>Heart Rate Monitor</Text>
-          </View>
-          <View style={styles.headerSpacer} />
         </View>
-        <Text style={styles.headerSubtitle}>Record a 7-second video to measure your heart rate</Text>
+        <View style={styles.titleSection}>
+          <Text style={styles.mainTitle}>Monitor Your Health</Text>
+          <Text style={styles.mainSubtitle}>Record a 7-second video to measure your heart rate</Text>
+        </View>
       </View>
 
       {/* Background Processing Banner */}
       {isProcessingInBackground && recordingState === 'processing' && (
         <Animated.View entering={FadeIn} style={styles.processingBanner}>
-          <ActivityIndicator size="small" color="#E53E3E" />
+          <ActivityIndicator size="small" color="#A8B5A8" />
           <Text style={styles.processingBannerText}>
             Analyzing your video...
           </Text>
@@ -444,73 +443,77 @@ export default function HeartRatePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#F5F5F0',
   },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 16,
+    marginTop: 20,
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
+    color: '#8B8B8B',
+    letterSpacing: 0.5,
   },
   backButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#A8B5A8',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  titleSection: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
+  },
+  mainTitle: {
+    fontSize: 32,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#4A4A4A',
+    marginBottom: 8,
+  },
+  mainSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: '#8B8B8B',
+    lineHeight: 24,
+  },
+  processingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E8',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginHorizontal: 24,
+    marginBottom: 16,
     borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
-    color: '#1A202C',
-    marginLeft: 8,
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    fontFamily: 'Poppins-Regular',
-    color: '#718096',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  processingBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF5F5',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginHorizontal: 24,
-    marginBottom: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FEB2B2',
+    elevation: 2,
     gap: 12,
   },
   processingBannerText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'Poppins-Medium',
-    color: '#C53030',
+    color: '#4A4A4A',
     lineHeight: 18,
   },
   backgroundProcessingContainer: {
@@ -757,15 +760,15 @@ const styles = StyleSheet.create({
   },
   recordButton: {
     flexDirection: 'row',
-    backgroundColor: '#E53E3E',
+    backgroundColor: '#A8B5A8',
     paddingVertical: 18,
     paddingHorizontal: 32,
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#E53E3E',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 5,
   },
@@ -781,35 +784,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingVertical: 18,
     paddingHorizontal: 32,
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#E53E3E',
+    borderColor: '#A8B5A8',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   uploadButtonText: {
     fontSize: 18,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
-    color: '#E53E3E',
+    color: '#A8B5A8',
     marginLeft: 12,
   },
   resetButton: {
     flexDirection: 'row',
-    backgroundColor: '#4299E1',
+    backgroundColor: '#B8A8B5',
     paddingVertical: 18,
     paddingHorizontal: 32,
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#4299E1',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 5,
   },
@@ -828,9 +831,9 @@ const styles = StyleSheet.create({
   },
   permissionTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
-    color: '#1A202C',
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#4A4A4A',
     marginTop: 24,
     marginBottom: 12,
     textAlign: 'center',
@@ -838,16 +841,21 @@ const styles = StyleSheet.create({
   permissionText: {
     fontSize: 16,
     fontFamily: 'Poppins-Regular',
-    color: '#718096',
+    color: '#8B8B8B',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 32,
   },
   permissionButton: {
-    backgroundColor: '#E53E3E',
+    backgroundColor: '#A8B5A8',
     paddingVertical: 16,
     paddingHorizontal: 32,
-    borderRadius: 12,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   permissionButtonText: {
     fontSize: 16,

@@ -1,55 +1,53 @@
 import FloatingActionMenu from '@/components/floating-action-menu';
-import { Calendar, Clock, Music, Star, Trophy } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import { Dimensions, FlatList, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeInDown,
   FadeInLeft,
-  FadeInRight,
   FadeInUp
 } from 'react-native-reanimated';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function DiscoverPage() {
-  const currentDate = new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   });
 
   const [carouselIndex, setCarouselIndex] = useState(0);
   const carouselRef = useRef<FlatList>(null);
 
   const wellnessCards = [
-    { 
-      id: '1', 
-      tag: 'Mindfulness', 
+    {
+      id: '1',
+      tag: 'Mindfulness',
       title: 'The Power of Morning Meditation',
       backgroundColor: '#A8B5A8'
     },
-    { 
-      id: '2', 
-      tag: 'Nutrition', 
+    {
+      id: '2',
+      tag: 'Nutrition',
       title: 'Healthy Eating for Mental Clarity',
       backgroundColor: '#B8A8B5'
     },
-    { 
-      id: '3', 
-      tag: 'Exercise', 
+    {
+      id: '3',
+      tag: 'Exercise',
       title: 'Movement as Medicine for the Mind',
       backgroundColor: '#A8B8B5'
     },
-    { 
-      id: '4', 
-      tag: 'Sleep', 
+    {
+      id: '4',
+      tag: 'Sleep',
       title: 'Creating Your Perfect Sleep Routine',
       backgroundColor: '#B5B8A8'
     },
-    { 
-      id: '5', 
-      tag: 'Stress Relief', 
+    {
+      id: '5',
+      tag: 'Stress Relief',
       title: 'Breathing Techniques for Calm',
       backgroundColor: '#A8B5B8'
     }
@@ -57,12 +55,7 @@ export default function DiscoverPage() {
 
   const renderWellnessCard = ({ item }: { item: any }) => {
     return (
-      <View
-        style={[
-          styles.wellnessCard,
-          { backgroundColor: item.backgroundColor }
-        ]}
-      >
+      <View style={[styles.wellnessCard, { backgroundColor: item.backgroundColor }]}>
         <View style={styles.moodCardContent}>
           <View style={styles.moodTag}>
             <Text style={styles.moodTagText}>{item.tag}</Text>
@@ -90,15 +83,13 @@ export default function DiscoverPage() {
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(100)} style={styles.header}>
           <Text style={styles.pageTitle}>Wellness</Text>
-          <TouchableOpacity style={styles.profileIcon}>
-            <View style={styles.profileCircle} />
-          </TouchableOpacity>
         </Animated.View>
 
         {/* Main Title Section */}
         <Animated.View entering={FadeInLeft.delay(200)} style={styles.titleSection}>
           <Text style={styles.mainTitle}>Catch-Up</Text>
           <Text style={styles.mainSubtitle}>Welcome back, Ken</Text>
+          <Text style={styles.dateText}>{currentDate}</Text>
         </Animated.View>
 
         {/* Wellness Cards Carousel */}
@@ -130,71 +121,52 @@ export default function DiscoverPage() {
           </View>
         </Animated.View>
 
-        {/* Recent Achievements */}
-        <Animated.Text entering={FadeInRight.delay(400)} style={styles.sectionTitle}>Recent Achievements</Animated.Text>
-        <Animated.View entering={FadeInUp.delay(500)} style={styles.achievementsContainer}>
-          <Animated.View entering={FadeInLeft.delay(600)} style={[styles.achievementCard, { backgroundColor: '#E8F5E8' }]}>
-            <Trophy color="#A8B5A8" size={22} />
-            <Text style={styles.achievementTitle}>Academic Excellence</Text>
-            <Text style={styles.achievementText}>Got an A in CS 500 level class</Text>
-          </Animated.View>
-          
-          <Animated.View entering={FadeInRight.delay(700)} style={[styles.achievementCard, { backgroundColor: '#F0E8F5' }]}>
-            <Star color="#B8A8B5" size={22} />
-            <Text style={styles.achievementTitle}>Leadership</Text>
-            <Text style={styles.achievementText}>Promoted as Club President</Text>
-          </Animated.View>
+        {/* Mood Trends Card */}
+        <Animated.View entering={FadeInUp.delay(400)} style={styles.moodTrendsCard}>
+          <View style={styles.moodTrendsHeader}>
+            <Text style={styles.moodTrendsTitle}>Mood Trends</Text>
+            <TouchableOpacity style={styles.heartIcon}>
+              <Text style={styles.heartIconText}>♡</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.weekDaysContainer}>
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+              <View key={day} style={styles.dayColumn}>
+                <View style={[styles.moodPill, index < 5 && styles.moodPillActive]} />
+                <Text style={styles.dayLabel}>{day}</Text>
+              </View>
+            ))}
+          </View>
         </Animated.View>
 
-        {/* Upcoming Events */}
-        <Animated.Text entering={FadeInLeft.delay(800)} style={styles.sectionTitle}>Upcoming Events</Animated.Text>
-        <Animated.View entering={FadeInRight.delay(900)} style={[styles.card, styles.eventCard, { backgroundColor: '#E8F0F5' }]}>
-          <View style={styles.cardHeader}>
-            <Calendar color="#A8B8B5" size={26} />
-            <Text style={styles.cardTitle}>Calendar Reminder</Text>
-          </View>
-          <View style={styles.eventDetails}>
-            <Text style={styles.eventTitle}>Dinner Celebration</Text>
-            <View style={styles.eventTime}>
-              <Clock color="#A8B8B5" size={18} />
-              <Text style={styles.eventTimeText}>Sunday, Oct 19th at 7:00 PM</Text>
+        {/* Stats Grid */}
+        <Animated.View entering={FadeInUp.delay(500)} style={styles.statsGrid}>
+          <View style={styles.statsRow}>
+            <View style={styles.statGridCard}>
+              <Text style={styles.statGridTitle}>Workouts</Text>
+              <Text style={styles.statGridNumber}>12</Text>
+              <Text style={styles.statGridSubtext}>this week</Text>
+            </View>
+            <View style={styles.statGridCard}>
+              <Text style={styles.statGridTitle}>Meditation</Text>
+              <Text style={styles.statGridNumber}>45</Text>
+              <Text style={styles.statGridSubtext}>minutes</Text>
             </View>
           </View>
-        </Animated.View>
 
-        {/* Current Vibe */}
-        <Animated.Text entering={FadeInRight.delay(1000)} style={styles.sectionTitle}>Current Vibe</Animated.Text>
-        <Animated.View entering={FadeInLeft.delay(1100)} style={[styles.card, styles.vibeCard, { backgroundColor: '#F5F0E8' }]}>
-          <Text style={styles.vibeText}>"Good feeling about winning this hackathon!"</Text>
-          <Text style={styles.vibeSubtext}>Stay confident and keep pushing forward</Text>
-        </Animated.View>
-
-        {/* Now Playing */}
-        <Animated.Text entering={FadeInLeft.delay(1200)} style={styles.sectionTitle}>Now Playing</Animated.Text>
-        <Animated.View entering={FadeInRight.delay(1300)} style={[styles.card, styles.musicCard, { backgroundColor: '#E8F5F0' }]}>
-          <View style={styles.cardHeader}>
-            <Music color="#A8B5A8" size={26} />
-            <Text style={styles.cardTitle}>Most Recent Track</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statGridCard}>
+              <Text style={styles.statGridTitle}>Journal</Text>
+              <Text style={styles.statGridNumber}>5</Text>
+              <Text style={styles.statGridSubtext}>entries</Text>
+            </View>
+            <View style={styles.statGridCard}>
+              <Text style={styles.statGridTitle}>Sleep</Text>
+              <Text style={styles.statGridNumber}>7.5</Text>
+              <Text style={styles.statGridSubtext}>avg hours</Text>
+            </View>
           </View>
-          <Text style={styles.musicTitle}>LOVE.</Text>
-          <Text style={styles.musicArtist}>Kendrick Lamar</Text>
-        </Animated.View>
-
-        {/* Quick Stats */}
-        <Animated.Text entering={FadeInRight.delay(1400)} style={styles.sectionTitle}>This Week's Highlights</Animated.Text>
-        <Animated.View entering={FadeInUp.delay(1500)} style={styles.statsContainer}>
-          <Animated.View entering={FadeInLeft.delay(1600)} style={[styles.statCard, { backgroundColor: '#E8F5E8' }]}>
-            <Text style={styles.statNumber}>1</Text>
-            <Text style={styles.statLabel}>A Grade</Text>
-          </Animated.View>
-          <Animated.View entering={FadeInUp.delay(1700)} style={[styles.statCard, { backgroundColor: '#F0E8F5' }]}>
-            <Text style={styles.statNumber}>1</Text>
-            <Text style={styles.statLabel}>Promotion</Text>
-          </Animated.View>
-          <Animated.View entering={FadeInRight.delay(1800)} style={[styles.statCard, { backgroundColor: '#E8F0F5' }]}>
-            <Text style={styles.statNumber}>100%</Text>
-            <Text style={styles.statLabel}>Confidence</Text>
-          </Animated.View>
         </Animated.View>
 
         <View style={{ height: 120 }} />
@@ -256,6 +228,12 @@ const styles = StyleSheet.create({
     color: '#8B8B8B',
     lineHeight: 24,
   },
+  dateText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#A8A8A8',
+    marginTop: 4,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
@@ -296,6 +274,8 @@ const styles = StyleSheet.create({
   },
   moodCardContent: {
     padding: 32,
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   moodTag: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
@@ -346,13 +326,14 @@ const styles = StyleSheet.create({
     height: 280,
     borderRadius: 24,
     marginHorizontal: 8,
-    justifyContent: 'flex-end',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 6,
   },
+
   paginationDots: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -370,123 +351,100 @@ const styles = StyleSheet.create({
     backgroundColor: '#A8B5A8',
     width: 24,
   },
-  achievementsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    gap: 16,
-    marginBottom: 8,
-  },
-  achievementCard: {
-    flex: 1,
-    padding: 24,
-    borderRadius: 20,
-    alignItems: 'center',
+  moodTrendsCard: {
+    marginHorizontal: 24,
+    marginBottom: 32,
+    padding: 32,
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  achievementTitle: {
-    fontSize: 16,
+  moodTrendsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  moodTrendsTitle: {
+    fontSize: 24,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
     color: '#4A4A4A',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
   },
-  achievementText: {
-    fontSize: 14,
-    fontFamily: 'Poppins-Regular',
-    color: '#8B8B8B',
-    textAlign: 'center',
-    lineHeight: 20,
+  heartIcon: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  eventCard: {
-    backgroundColor: '#FFFFFF',
+  heartIconText: {
+    fontSize: 24,
+    color: '#B8B8B8',
   },
-  eventDetails: {
-    marginTop: 8,
+  weekDaysContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  eventTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
-    color: '#4A4A4A',
+  dayColumn: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  moodPill: {
+    width: 40,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#E8E8E8',
     marginBottom: 12,
   },
-  eventTime: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  moodPillActive: {
+    backgroundColor: '#A8B5A8',
   },
-  eventTimeText: {
-    fontSize: 16,
-    fontFamily: 'Poppins-Regular',
-    color: '#8B8B8B',
-    marginLeft: 8,
-  },
-  vibeCard: {
-    backgroundColor: '#FFFFFF',
-  },
-  vibeText: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
-    color: '#4A4A4A',
-    marginBottom: 8,
-    lineHeight: 26,
-  },
-  vibeSubtext: {
-    fontSize: 16,
+  dayLabel: {
+    fontSize: 14,
     fontFamily: 'Poppins-Regular',
     color: '#8B8B8B',
   },
-  musicCard: {
-    backgroundColor: '#FFFFFF',
-  },
-  musicTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
-    color: '#4A4A4A',
-    marginBottom: 6,
-  },
-  musicArtist: {
-    fontSize: 16,
-    fontFamily: 'Poppins-Regular',
-    color: '#8B8B8B',
-  },
-  statsContainer: {
-    flexDirection: 'row',
+  statsGrid: {
     paddingHorizontal: 24,
-    gap: 16,
-    marginBottom: 8,
+    marginBottom: 32,
   },
-  statCard: {
+  statsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  statGridCard: {
     flex: 1,
     padding: 24,
-    borderRadius: 20,
-    alignItems: 'center',
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  statNumber: {
-    fontSize: 28,
+  statGridTitle: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: '#8B8B8B',
+    marginBottom: 8,
+  },
+  statGridNumber: {
+    fontSize: 32,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
     color: '#4A4A4A',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  statLabel: {
+  statGridSubtext: {
     fontSize: 14,
     fontFamily: 'Poppins-Regular',
     color: '#8B8B8B',
-    textAlign: 'center',
   },
 });

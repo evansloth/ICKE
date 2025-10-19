@@ -1,5 +1,5 @@
 import { usePathname, useRouter } from 'expo-router';
-import { BookOpen, CheckCircle, Dumbbell, Heart, Home, Newspaper, X } from 'lucide-react-native';
+import { BookOpen, Dumbbell, Heart, Home, Newspaper, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 
@@ -23,7 +23,7 @@ export default function FloatingActionMenu() {
   };
 
   const navigateTo = (route: string) => {
-    router.push(route);
+    router.push(route as any);
     toggleMenu();
   };
 
@@ -32,7 +32,6 @@ export default function FloatingActionMenu() {
     { icon: Newspaper, label: 'Explore', route: '/explore' },
     { icon: BookOpen, label: 'Journal', route: '/journal' },
     { icon: Dumbbell, label: 'Workout', route: '/workout' },
-    { icon: CheckCircle, label: 'Habits', route: '/habits' },
     { icon: Heart, label: 'Heart Rate', route: '/heartrate' },
   ];
 
@@ -41,7 +40,7 @@ export default function FloatingActionMenu() {
       {/* Expanded Menu Items */}
       {menuItems.map((item, index) => {
         const Icon = item.icon;
-        const angle = (100 + index * 35) * (Math.PI / 180); // Spread items in an arc to the left with more spacing
+        const angle = (100 + index * 30) * (Math.PI / 180); // Spread items in an arc to the left with more spacing
         const radius = 120;
 
         const translateX = animation.interpolate({
@@ -88,7 +87,7 @@ export default function FloatingActionMenu() {
             >
               <Icon
                 size={20}
-                color={pathname === item.route ? '#FFFFFF' : '#000000'}
+                color={pathname === item.route ? '#FFFFFF' : '#4A4A4A'}
               />
             </TouchableOpacity>
           </Animated.View>
@@ -125,7 +124,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#000000',
+    backgroundColor: '#A8B5A8',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
@@ -170,11 +169,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     borderWidth: 2,
-    borderColor: '#F0F0F0',
+    borderColor: '#E8E8E8',
   },
   activeMenuButton: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
+    backgroundColor: '#A8B5A8',
+    borderColor: '#A8B5A8',
   },
 });
 

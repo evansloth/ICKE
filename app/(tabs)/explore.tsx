@@ -87,9 +87,7 @@ export default function ExploreScreen() {
           <Text style={styles.headerTitle}>
             Explore
           </Text>
-          <TouchableOpacity style={styles.profileIcon}>
-            <View style={styles.profileCircle} />
-          </TouchableOpacity>
+          <View style={styles.headerSpacer} />
         </View>
 
         {/* Card Stack */}
@@ -132,15 +130,9 @@ function TagSelectionScreen({ selectedTags, onToggleTag, onContinue, colorScheme
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.menuIcon}>
-          <View style={styles.menuLine} />
-          <View style={styles.menuLine} />
-          <View style={styles.menuLine} />
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
         <Text style={styles.headerTitle}>Explore</Text>
-        <TouchableOpacity style={styles.profileIcon}>
-          <View style={styles.profileCircle} />
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
       </View>
 
       <View style={styles.tagSelectionContent}>
@@ -483,18 +475,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 40,
   },
-  menuIcon: {
-    width: 24,
-    height: 24,
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  menuLine: {
-    width: 20,
-    height: 2,
-    backgroundColor: '#8B8B8B',
-    borderRadius: 1,
-  },
+
   headerTitle: {
     fontSize: 24,
     fontWeight: '500',
@@ -502,17 +483,8 @@ const styles = StyleSheet.create({
     color: '#8B8B8B',
     letterSpacing: 0.5,
   },
-  profileIcon: {
+  headerSpacer: {
     width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileCircle: {
-    width: 36,
-    height: 36,
-    backgroundColor: '#B8C5B8',
-    borderRadius: 18,
   },
   backButton: {
     paddingHorizontal: 16,

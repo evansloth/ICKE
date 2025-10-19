@@ -1,10 +1,10 @@
 import FloatingActionMenu from '@/components/floating-action-menu';
-import { useRouter } from 'expo-router';
-import { Circle, Play, TrendingUp, Award, Target, Clock, Zap } from 'lucide-react-native';
-import React, { useState, useEffect } from 'react';
-import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View, Alert, Image, Animated, Modal } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import { Clock, Play, Target, TrendingUp, Zap } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Animated, Modal, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface WorkoutSession {
   id: string;
@@ -22,6 +22,8 @@ interface WorkoutStats {
   bestAccuracy: number;
   recentSessions: WorkoutSession[];
 }
+
+
 
 export default function WorkoutPage() {
   const router = useRouter();
@@ -298,9 +300,19 @@ export default function WorkoutPage() {
       <StatusBar barStyle="dark-content" />
       <ScrollView style={styles.container}>
         <View style={styles.background}>
-          <Text style={styles.headerTitle}>Workout</Text>
+          <View style={styles.header}>
+            <Text style={styles.pageTitle}>Workout</Text>
+            <TouchableOpacity style={styles.profileIcon}>
+              <View style={styles.profileCircle} />
+            </TouchableOpacity>
+          </View>
 
-          <View style={styles.progressCard}>
+          <View style={styles.titleSection}>
+            <Text style={styles.mainTitle}>Workouts</Text>
+            <Text style={styles.mainSubtitle}>Move your body, nurture your soul</Text>
+          </View>
+
+          <View style={[styles.progressCard, { backgroundColor: '#E8F5E8' }]}>
             <View style={styles.progressCardContent}>
               <Text style={styles.progressTitle}>Workout Progress</Text>
               <Text style={styles.progressSubtitle}>
@@ -314,106 +326,126 @@ export default function WorkoutPage() {
             </View>
           </View>
 
+          {/* Analyze My Form Banner */}
+          <TouchableOpacity
+            style={styles.analyzeFormBannerContainer}
+            onPress={handleVideoUpload}
+            disabled={isAnalyzing}
+          >
+            <View style={styles.analyzeFormBanner}>
+              <View style={styles.gradientOverlay} />
+              <View style={styles.analyzeFormContent}>
+                <Text style={styles.analyzeFormTitle}>Analyze My Form</Text>
+                <Text style={styles.analyzeFormSubtitle}>
+                  {isAnalyzing ? 'Analyzing your workout...' : 'Upload a video to get form feedback'}
+                </Text>
+                <View style={styles.streakDots}>
+                  {[...Array(7)].map((_, index) => (
+                    <View key={index} style={[styles.streakDot, index < 5 && styles.streakDotActive]} />
+                  ))}
+                </View>
+              </View>
+              <View style={styles.analyzeFormIcon}>
+                <Target size={32} color="#FFFFFF" />
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          {/* Add Exercise Card */}
+          <View style={styles.addExerciseContainer}>
+            <View style={[styles.workoutProgramCard, { backgroundColor: '#A8B5A8' }]}>
+              <Text style={styles.workoutProgramTitle}>Add Exercise</Text>
+              <Text style={styles.workoutProgramDescription}>Create your own custom workout routine</Text>
+              <View style={styles.workoutProgramTags}>
+                <View style={styles.workoutTag}>
+                  <Text style={styles.workoutTagText}>Custom</Text>
+                </View>
+                <View style={styles.workoutTag}>
+                  <Text style={styles.workoutTagText}>Your Pace</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={styles.startWorkoutButton}>
+                <Text style={styles.startWorkoutText}>Create workout</Text>
+                <View style={styles.startWorkoutIcon}>
+                  <Play size={16} color="#4A4A4A" />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <Text style={styles.sectionTitle}>Recent Workouts</Text>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.workoutScrollContainer}
-            contentContainerStyle={styles.workoutScrollContent}
-          >
+          <View style={styles.recentWorkoutsContainer}>
             {workoutStats.recentSessions.length > 0 ? (
-              workoutStats.recentSessions.map((session, index) => (
-                <TouchableOpacity key={session.id} style={styles.workoutCard}>
-                  <View style={styles.workoutCardHeader}>
-                    <View style={styles.workoutTypeContainer}>
-                      <Target size={16} color="#FF7171" />
-                      <Text style={styles.workoutType}>{session.exerciseType}</Text>
+              workoutStats.recentSessions.map((session, index) => {
+                const cardColors = ['#B8A8B5', '#A8B5B8', '#B5B8A8'];
+                const backgroundColor = cardColors[index % cardColors.length];
+
+                return (
+                  <View key={session.id} style={[styles.recentWorkoutCard, { backgroundColor }]}>
+                    <Text style={styles.recentWorkoutTitle}>{session.exerciseType}</Text>
+                    <Text style={styles.recentWorkoutDescription}>Completed {session.date.toLowerCase()}</Text>
+                    <View style={styles.recentWorkoutTags}>
+                      <View style={styles.workoutTag}>
+                        <Text style={styles.workoutTagText}>{session.duration} min</Text>
+                      </View>
+                      <View style={styles.workoutTag}>
+                        <Text style={styles.workoutTagText}>{session.accuracy}% accuracy</Text>
+                      </View>
                     </View>
-                    <Text style={styles.workoutDate}>{session.date}</Text>
+                    <TouchableOpacity style={styles.viewWorkoutButton}>
+                      <Text style={styles.viewWorkoutText}>View details</Text>
+                      <View style={styles.viewWorkoutIcon}>
+                        <TrendingUp size={16} color="#4A4A4A" />
+                      </View>
+                    </TouchableOpacity>
                   </View>
-
-                  <View style={styles.workoutStats}>
-                    <View style={styles.workoutStatItem}>
-                      <Clock size={14} color="#666" />
-                      <Text style={styles.workoutStatText}>{session.duration}min</Text>
-                    </View>
-                    <View style={styles.workoutStatItem}>
-                      <TrendingUp size={14} color="#00B208" />
-                      <Text style={styles.workoutStatText}>{session.accuracy}%</Text>
-                    </View>
-                  </View>
-
-
-                </TouchableOpacity>
-              ))
+                );
+              })
             ) : (
-              <View style={styles.emptyWorkoutCard}>
-                <Zap size={32} color="#DDD" />
-                <Text style={styles.emptyWorkoutText}>No workouts yet</Text>
-                <Text style={styles.emptyWorkoutSubtext}>Upload a video to get started!</Text>
+              <View style={[styles.recentWorkoutCard, { backgroundColor: '#E8E8E8' }]}>
+                <Text style={styles.recentWorkoutTitle}>No Recent Workouts</Text>
+                <Text style={styles.recentWorkoutDescription}>Start your fitness journey today</Text>
+                <View style={styles.recentWorkoutTags}>
+                  <View style={styles.workoutTag}>
+                    <Text style={styles.workoutTagText}>Get Started</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={styles.viewWorkoutButton} onPress={handleVideoUpload}>
+                  <Text style={styles.viewWorkoutText}>Upload video</Text>
+                  <View style={styles.viewWorkoutIcon}>
+                    <Zap size={16} color="#4A4A4A" />
+                  </View>
+                </TouchableOpacity>
               </View>
             )}
-
-            {/* Add new workout card */}
-            <TouchableOpacity style={styles.addWorkoutCard} onPress={handleVideoUpload}>
-              <View style={styles.addWorkoutIcon}>
-                <Text style={styles.addWorkoutPlus}>+</Text>
-              </View>
-              <Text style={styles.addWorkoutText}>Add Workout</Text>
-            </TouchableOpacity>
-          </ScrollView>
+          </View>
 
           <View style={styles.statsContainer}>
-            <View style={styles.statsCard}>
-              <View style={styles.statHeader}>
-                <Award size={20} color="#FF7171" />
-                <Text style={styles.statTitle}>Best Score</Text>
+            <View style={styles.dailyGoalCard}>
+              <View style={styles.circularProgressContainer}>
+                <View style={[styles.circularProgressRing, { borderColor: '#A8B5A8' }]}>
+                  <TrendingUp size={24} color="#A8B5A8" />
+                </View>
+                <Text style={styles.circularProgressText}>{Math.round(workoutStats.averageAccuracy)}%</Text>
               </View>
-              <Text style={styles.statValue}>{workoutStats.bestAccuracy.toFixed(1)}%</Text>
-              <Text style={styles.statSubtext}>Personal best</Text>
+              <Text style={styles.dailyGoalTitle}>Daily Goal</Text>
             </View>
 
-            <View style={styles.statsCard}>
-              <View style={styles.statHeader}>
-                <Clock size={20} color="#00B208" />
-                <Text style={styles.statTitle}>Total Time</Text>
+            <View style={styles.dailyGoalCard}>
+              <View style={styles.circularProgressContainer}>
+                <View style={[styles.circularProgressRing, { borderColor: '#B8A8B5' }]}>
+                  <Clock size={24} color="#B8A8B5" />
+                </View>
+                <Text style={styles.circularProgressText}>{workoutStats.totalSessions}</Text>
               </View>
-              <Text style={styles.statValue}>{Math.round(workoutStats.totalDuration / 60)}h</Text>
-              <Text style={styles.statSubtext}>{workoutStats.totalDuration % 60}min</Text>
-            </View>
-
-            <View style={styles.statsCard}>
-              <View style={styles.statHeader}>
-                <TrendingUp size={20} color="#007DE1" />
-                <Text style={styles.statTitle}>Avg Accuracy</Text>
-              </View>
-              <Text style={styles.statValue}>{workoutStats.averageAccuracy.toFixed(1)}%</Text>
-              <Text style={styles.statSubtext}>Overall performance</Text>
+              <Text style={styles.dailyGoalTitle}>Active Days</Text>
             </View>
           </View>
 
           <View style={{ height: 4 }} />
 
-          <View style={styles.formSection}>
-            <View style={styles.formAnalysisCard}>
-              <View style={styles.formQuestion}>
-                <Text style={styles.formQuestionText}>Need to fix your form?</Text>
-                {selectedVideo && (
-                  <Text style={styles.videoSelectedText}>✓ Video selected</Text>
-                )}
-              </View>
-              <TouchableOpacity
-                style={[styles.analyzeButton, isAnalyzing && styles.analyzeButtonDisabled]}
-                onPress={handleVideoUpload}
-                disabled={isAnalyzing}
-              >
-                <Text style={styles.analyzeButtonText}>
-                  {isAnalyzing ? 'Analyzing...' : selectedVideo ? 'Upload New Video' : 'Analyze Now'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+
         </View>
       </ScrollView>
       <FloatingActionMenu />
@@ -514,42 +546,79 @@ export default function WorkoutPage() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F5F0',
   },
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F5F0',
   },
   background: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F5F0',
     minHeight: 812,
     paddingBottom: 50,
   },
-  headerTitle: {
-    fontFamily: 'Poppins-Bold',
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  pageTitle: {
     fontSize: 24,
-    marginTop: 18,
-    marginLeft: 21,
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
+    color: '#8B8B8B',
+    letterSpacing: 0.5,
+  },
+  profileIcon: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileCircle: {
+    width: 36,
+    height: 36,
+    backgroundColor: '#B8C5B8',
+    borderRadius: 18,
+  },
+  titleSection: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
+  },
+  mainTitle: {
+    fontSize: 32,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#4A4A4A',
+    marginBottom: 8,
+  },
+  mainSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: '#8B8B8B',
+    lineHeight: 24,
   },
   progressCard: {
-    width: 335,
-    height: 71,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
+    width: '92%',
+    height: 80,
+    borderRadius: 24,
     marginHorizontal: 24,
-    marginTop: 18,
+    marginBottom: 32,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 10,
+    paddingHorizontal: 24,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.07,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
   progressCardContent: {
     marginLeft: 10,
@@ -557,152 +626,94 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontFamily: 'Poppins-SemiBold',
     fontSize: 20,
+    color: '#000000ff',
   },
   progressSubtitle: {
     fontFamily: 'Poppins-Regular',
-    fontSize: 10,
-    color: '#A2A2A2',
+    fontSize: 12,
+    color: '#000000ff',
   },
   progressCircle: {
     marginRight: 10,
   },
   circularProgress: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#F0F8FF',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(168, 168, 168, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#00B208',
+    borderColor: '#FFFFFF',
   },
   progressPercentage: {
     fontFamily: 'Poppins-Bold',
-    fontSize: 12,
-    color: '#00B208',
+    fontSize: 14,
+    color: '#FFFFFF',
   },
   sectionTitle: {
-    fontFamily: 'Poppins-Medium',
-    fontSize: 15,
-    marginTop: 16,
+    fontSize: 20,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#4A4A4A',
+    marginBottom: 16,
     marginLeft: 24,
   },
-  workoutScrollContainer: {
-    marginTop: 8,
-    height: 100,
-    marginBottom: 0,
-    paddingBottom: 0,
+  recentWorkoutsContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
   },
-  workoutScrollContent: {
-    paddingLeft: 21,
-    paddingBottom: 0,
-  },
-  workoutCard: {
-    width: 200,
-    height: 100,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    marginRight: 16,
-    padding: 16,
+  recentWorkoutCard: {
+    borderRadius: 24,
+    marginBottom: 16,
+    padding: 32,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  workoutCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  workoutTypeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  workoutType: {
-    fontFamily: 'Poppins-SemiBold',
-    fontSize: 12,
-    color: '#333',
-    marginLeft: 6,
-  },
-  workoutDate: {
-    fontFamily: 'Poppins-Regular',
-    fontSize: 10,
-    color: '#666',
-  },
-  workoutStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  workoutStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  workoutStatText: {
-    fontFamily: 'Poppins-Medium',
-    fontSize: 11,
-    color: '#666',
-    marginLeft: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
 
-  emptyWorkoutCard: {
-    width: 200,
-    height: 100,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 16,
-    marginRight: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#E9ECEF',
-    borderStyle: 'dashed',
-  },
-  emptyWorkoutText: {
-    fontFamily: 'Poppins-Medium',
-    fontSize: 14,
-    color: '#999',
-    marginTop: 8,
-  },
-  emptyWorkoutSubtext: {
-    fontFamily: 'Poppins-Regular',
-    fontSize: 10,
-    color: '#BBB',
-    marginTop: 4,
-  },
-  addWorkoutCard: {
-    width: 120,
-    height: 100,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 16,
-    marginRight: 21,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FF7171',
-    borderStyle: 'dashed',
-    marginBottom: 0,
-    paddingBottom: 0,
-  },
-  addWorkoutIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FF7171',
-    justifyContent: 'center',
-    alignItems: 'center',
+  recentWorkoutTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
-  addWorkoutPlus: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    fontFamily: 'Poppins-Bold',
+  recentWorkoutDescription: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 20,
+    lineHeight: 24,
   },
-  addWorkoutText: {
-    fontFamily: 'Poppins-Medium',
-    fontSize: 12,
-    color: '#FF7171',
+  recentWorkoutTags: {
+    flexDirection: 'row',
+    marginBottom: 24,
+    gap: 12,
+  },
+  viewWorkoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
+  viewWorkoutText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#4A4A4A',
+  },
+  viewWorkoutIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F5F5F0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -712,92 +723,45 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     gap: 12,
   },
-  statsCard: {
+  dailyGoalCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  statHeader: {
-    flexDirection: 'row',
+  circularProgressContainer: {
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 20,
   },
-  statTitle: {
+  circularProgressRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 6,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  circularProgressText: {
+    fontSize: 24,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#4A4A4A',
+  },
+  dailyGoalTitle: {
+    fontSize: 18,
     fontFamily: 'Poppins-Medium',
-    fontSize: 10,
-    color: '#666',
-    marginLeft: 6,
-  },
-  statValue: {
-    fontFamily: 'Poppins-Bold',
-    fontSize: 20,
-    color: '#333',
-    marginBottom: 4,
-  },
-  statSubtext: {
-    fontFamily: 'Poppins-Regular',
-    fontSize: 8,
-    color: '#999',
+    color: '#8B8B8B',
     textAlign: 'center',
   },
-  formSection: {
-    marginTop: 8,
-    marginHorizontal: 24,
-  },
-  formAnalysisCard: {
-    width: '100%',
-    height: 117,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  formQuestion: {
-    marginBottom: 10,
-  },
-  formQuestionText: {
-    fontFamily: 'Poppins-Medium',
-    fontSize: 9,
-  },
-  analyzeButton: {
-    width: 127,
-    height: 35,
-    backgroundColor: '#FF7171',
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  analyzeButtonText: {
-    fontFamily: 'Poppins-Bold',
-    fontSize: 9,
-    color: '#FFFFFF',
-  },
-  videoSelectedText: {
-    fontFamily: 'Poppins-Regular',
-    fontSize: 8,
-    color: '#00B208',
-    marginTop: 4,
-  },
-  analyzeButtonDisabled: {
-    backgroundColor: '#CCCCCC',
-  },
+
   // Loading Animation Styles
   loadingOverlay: {
     flex: 1,
@@ -881,6 +845,140 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#999',
     textAlign: 'center',
+  },
+  analyzeFormBannerContainer: {
+    marginHorizontal: 24,
+    marginBottom: 32,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  analyzeFormBanner: {
+    borderRadius: 24,
+    padding: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#A8B5A8',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: '50%',
+    backgroundColor: '#B8A8B5',
+    opacity: 0.7,
+  },
+  analyzeFormContent: {
+    flex: 1,
+  },
+  analyzeFormTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  analyzeFormSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 20,
+    lineHeight: 24,
+  },
+  streakDots: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  streakDot: {
+    width: 24,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  streakDotActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  analyzeFormIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addExerciseContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
+  },
+  workoutProgramCard: {
+    borderRadius: 24,
+    padding: 32,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  workoutProgramTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  workoutProgramDescription: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 20,
+    lineHeight: 24,
+  },
+  workoutProgramTags: {
+    flexDirection: 'row',
+    marginBottom: 24,
+    gap: 12,
+  },
+  workoutTag: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  workoutTagText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
+  },
+  startWorkoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
+  startWorkoutText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#4A4A4A',
+  },
+  startWorkoutIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F5F5F0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
